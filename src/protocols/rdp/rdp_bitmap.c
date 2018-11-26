@@ -71,6 +71,19 @@ BOOL guac_rdp_bitmap_new(rdpContext* context, rdpBitmap* bitmap) {
     /* Convert image data if present */
     if (bitmap->data != NULL && context->settings->ColorDepth != 32) {
 
+      if (bitmap->format == PIXEL_FORMAT_XRGB32) {
+        // Temporary fix
+        UINT32 pixels = bitmap->width * bitmap->height;
+        for (UINT32 i = 0; i < pixels; i++) {
+          // Swap blue and null
+          bitmap->data[0 + 4 * i] = bitmap->data[3 + 4 * i];
+          bitmap->data[3 + 4 * i] = 0;
+          // Swap red and green
+          BYTE temp = bitmap->data[1 + 4 * i];
+          bitmap->data[1 + 4 * i] = bitmap->data[2 + 4 * i];
+          bitmap->data[2 + 4 * i] = temp;
+        }
+      } else {
         /* Convert image data to 32-bit RGB */
 				UINT32 dst_format = PIXEL_FORMAT_XRGB32;
 				BYTE* dst_data = (BYTE*) _aligned_malloc(bitmap->width * bitmap->height * GetBytesPerPixel(dst_format), 16);
@@ -90,6 +103,7 @@ BOOL guac_rdp_bitmap_new(rdpContext* context, rdpBitmap* bitmap) {
 
         /* Store converted image in bitmap */
         bitmap->data = dst_data;
+      }
 
     }
 
