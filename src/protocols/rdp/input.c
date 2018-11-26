@@ -24,7 +24,6 @@
 #include "input.h"
 #include "keyboard.h"
 #include "rdp.h"
-#include "rdp_disp.h"
 
 #include <freerdp/freerdp.h>
 #include <freerdp/input.h>
@@ -156,7 +155,6 @@ int guac_rdp_user_size_handler(guac_user* user, int width, int height) {
 
     /* Send display update */
     pthread_mutex_lock(&(rdp_client->rdp_lock));
-    guac_rdp_disp_set_size(rdp_client->disp, settings, rdp_inst, width, height);
     pthread_mutex_unlock(&(rdp_client->rdp_lock));
 
     return 0;

@@ -22,13 +22,7 @@
 #define _GUAC_RDP_RDP_KEYMAP_H
 
 #include "config.h"
-
-#ifdef ENABLE_WINPR
 #include <winpr/wtypes.h>
-#else
-#include "compat/winpr-wtypes.h"
-#endif
-
 /**
  * Represents a keysym-to-scancode mapping for RDP, with extra information
  * about the state of prerequisite keysyms.

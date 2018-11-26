@@ -19,14 +19,12 @@
 
 #include "config.h"
 
-#include "audio_input.h"
 #include "common/display.h"
 #include "input.h"
 #include "user.h"
 #include "rdp.h"
 #include "rdp_settings.h"
 #include "rdp_stream.h"
-#include "rdp_svc.h"
 
 #ifdef ENABLE_COMMON_SSH
 #include "sftp.h"
@@ -72,10 +70,6 @@ int guac_rdp_user_join_handler(guac_user* user, int argc, char** argv) {
             return 1;
         }
 
-        /* Handle inbound audio streams if audio input is enabled */
-        if (settings->enable_audio_input)
-            user->audio_handler = guac_rdp_audio_handler;
-
     }
 
     /* If not owner, synchronize with current state */
@@ -84,9 +78,6 @@ int guac_rdp_user_join_handler(guac_user* user, int argc, char** argv) {
         /* Synchronize any audio stream */
         if (rdp_client->audio)
             guac_audio_stream_add_user(rdp_client->audio, user);
-
-        /* Bring user up to date with any registered static channels */
-        guac_rdp_svc_send_pipes(user);
 
         /* Synchronize with current display */
         guac_common_display_dup(rdp_client->display, user, user->socket);
@@ -107,9 +98,6 @@ int guac_rdp_user_join_handler(guac_user* user, int argc, char** argv) {
 
         /* Set generic (non-filesystem) file upload handler */
         user->file_handler = guac_rdp_user_file_handler;
-
-        /* Inbound arbitrary named pipes */
-        user->pipe_handler = guac_rdp_svc_pipe_handler;
 
     }
 
@@ -132,10 +120,6 @@ int guac_rdp_user_file_handler(guac_user* user, guac_stream* stream,
             return guac_rdp_sftp_file_handler(user, stream, mimetype, filename);
     }
 #endif
-
-    /* Default to using RDPDR uploads (if enabled) */
-    if (rdp_client->filesystem != NULL)
-        return guac_rdp_upload_file_handler(user, stream, mimetype, filename);
 
     /* File transfer not enabled */
     guac_protocol_send_ack(user->socket, stream, "File transfer disabled",

@@ -25,13 +25,7 @@
 
 #include <freerdp/codec/color.h>
 #include <freerdp/freerdp.h>
-
-#ifdef ENABLE_WINPR
 #include <winpr/wtypes.h>
-#else
-#include "compat/winpr-wtypes.h"
-#endif
-
 UINT32 guac_rdp_convert_color(rdpContext* context, UINT32 color) {
 
 #ifdef HAVE_FREERDP_CONVERT_GDI_ORDER_COLOR
@@ -50,12 +44,10 @@ UINT32 guac_rdp_convert_color(rdpContext* context, UINT32 color) {
             guac_rdp_get_depth(context->instance), clrconv);
 
 #else
-    CLRCONV* clrconv = ((rdp_freerdp_context*) context)->clrconv;
+    gdiPalette* clrconv = ((rdp_freerdp_context*) context)->clrconv;
 
     /* Convert given color to ARGB32 */
-    return freerdp_color_convert_var(color,
-            guac_rdp_get_depth(context->instance), 32,
-            clrconv);
+		return FreeRDPConvertColor(color, 32, PIXEL_FORMAT_ARGB32, clrconv);
 #endif
 
 }

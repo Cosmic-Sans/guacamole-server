@@ -23,7 +23,6 @@
 
 #include "config.h"
 #include "common/json.h"
-#include "rdp_svc.h"
 
 #include <guacamole/user.h>
 #include <guacamole/protocol.h>
@@ -65,33 +64,6 @@ typedef struct guac_rdp_upload_status {
     int file_id;
 
 } guac_rdp_upload_status;
-
-/**
- * The current state of a directory listing operation.
- */
-typedef struct guac_rdp_ls_status {
-
-    /**
-     * The filesystem associated with the directory being listed.
-     */
-    guac_rdp_fs* fs;
-
-    /**
-     * The file ID of the directory being listed.
-     */
-    int file_id;
-
-    /**
-     * The absolute path of the directory being listed.
-     */
-    char directory_name[GUAC_RDP_FS_MAX_PATH];
-
-    /**
-     * The current state of the JSON directory object being written.
-     */
-    guac_common_json_state json_state;
-
-} guac_rdp_ls_status;
 
 /**
  * All available stream types.
@@ -145,27 +117,7 @@ typedef struct guac_rdp_stream {
      */
     guac_rdp_download_status download_status;
 
-    /**
-     * The directory list status. Only valid for GUAC_RDP_LS_STREAM.
-     */
-    guac_rdp_ls_status ls_status;
-
-    /**
-     * Associated SVC instance. Only valid for GUAC_RDP_INBOUND_SVC_STREAM.
-     */
-    guac_rdp_svc* svc;
-
 } guac_rdp_stream;
-
-/**
- * Handler for inbound files related to file uploads.
- */
-guac_user_file_handler guac_rdp_upload_file_handler;
-
-/**
- * Handler for inbound pipes related to static virtual channels.
- */
-guac_user_pipe_handler guac_rdp_svc_pipe_handler;
 
 /**
  * Handler for inbound clipboard data.

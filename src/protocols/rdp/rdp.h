@@ -22,16 +22,12 @@
 
 #include "config.h"
 
-#include "audio_input.h"
 #include "common/clipboard.h"
 #include "common/display.h"
 #include "common/list.h"
 #include "common/recording.h"
 #include "common/surface.h"
 #include "keyboard.h"
-#include "rdp_disp.h"
-#include "rdp_fs.h"
-#include "rdp_print_job.h"
 #include "rdp_settings.h"
 
 #include <freerdp/freerdp.h>
@@ -47,6 +43,7 @@
 
 #include <pthread.h>
 #include <stdint.h>
+#include <freerdp/client/cliprdr.h>
 
 /**
  * RDP-specific client data.
@@ -107,25 +104,12 @@ typedef struct guac_rdp_client {
      */
     int requested_clipboard_format;
 
+		CliprdrClientContext* cliprdr;
+
     /**
      * Audio output, if any.
      */
     guac_audio_stream* audio;
-
-    /**
-     * Audio input buffer, if audio input is enabled.
-     */
-    guac_rdp_audio_buffer* audio_input;
-
-    /**
-     * The filesystem being shared, if any.
-     */
-    guac_rdp_fs* filesystem;
-
-    /**
-     * The currently-active print job, or NULL if no print job is active.
-     */
-    guac_rdp_print_job* active_job;
 
 #ifdef ENABLE_COMMON_SSH
     /**
@@ -149,11 +133,6 @@ typedef struct guac_rdp_client {
      * progress.
      */
     guac_common_recording* recording;
-
-    /**
-     * Display size update module.
-     */
-    guac_rdp_disp* disp;
 
     /**
      * List of all available static virtual channels.
@@ -194,7 +173,7 @@ typedef struct rdp_freerdp_context {
     /**
      * Color conversion structure to be used to convert RDP images to PNGs.
      */
-    CLRCONV* clrconv;
+    gdiPalette* clrconv;
 
     /**
      * The current color palette, as received from the RDP server.
@@ -215,7 +194,10 @@ typedef struct rdp_freerdp_context {
  *     NULL in all cases. The return value of this thread is expected to be
  *     ignored.
  */
-void* guac_rdp_client_thread(void* data);
+#ifdef __cplusplus
+	extern "C"
+#endif
+	void* guac_rdp_client_thread(void* data);
 
 #endif
 

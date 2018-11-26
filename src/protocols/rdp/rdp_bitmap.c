@@ -32,13 +32,7 @@
 #include <freerdp/freerdp.h>
 #include <guacamole/client.h>
 #include <guacamole/socket.h>
-
-#ifdef ENABLE_WINPR
 #include <winpr/wtypes.h>
-#else
-#include "compat/winpr-wtypes.h"
-#endif
-
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -72,19 +66,21 @@ void guac_rdp_cache_bitmap(rdpContext* context, rdpBitmap* bitmap) {
 
 }
 
-void guac_rdp_bitmap_new(rdpContext* context, rdpBitmap* bitmap) {
+BOOL guac_rdp_bitmap_new(rdpContext* context, rdpBitmap* bitmap) {
 
     /* Convert image data if present */
-    if (bitmap->data != NULL && bitmap->bpp != 32) {
+    if (bitmap->data != NULL && context->settings->ColorDepth != 32) {
 
         /* Convert image data to 32-bit RGB */
-        unsigned char* image_buffer = freerdp_image_convert(bitmap->data, NULL,
-                bitmap->width, bitmap->height,
-                guac_rdp_get_depth(context->instance),
-                32, ((rdp_freerdp_context*) context)->clrconv);
+				UINT32 dst_format = PIXEL_FORMAT_XRGB32;
+				BYTE* dst_data = (BYTE*) _aligned_malloc(bitmap->width * bitmap->height * GetBytesPerPixel(dst_format), 16);
+        freerdp_image_copy(dst_data, dst_format,
+								0, 0, 0, bitmap->width, bitmap->height,
+                bitmap->data, bitmap->format, 0, 0, 0,
+                ((rdp_freerdp_context*) context)->clrconv, 0);
 
         /* Free existing image, if any */
-        if (image_buffer != bitmap->data) {
+        if (dst_data != bitmap->data) {
 #ifdef FREERDP_BITMAP_REQUIRES_ALIGNED_MALLOC
             _aligned_free(bitmap->data);
 #else
@@ -93,7 +89,7 @@ void guac_rdp_bitmap_new(rdpContext* context, rdpBitmap* bitmap) {
         }
 
         /* Store converted image in bitmap */
-        bitmap->data = image_buffer;
+        bitmap->data = dst_data;
 
     }
 
@@ -103,9 +99,11 @@ void guac_rdp_bitmap_new(rdpContext* context, rdpBitmap* bitmap) {
     /* Start at zero usage */
     ((guac_rdp_bitmap*) bitmap)->used = 0;
 
+		return TRUE;
+
 }
 
-void guac_rdp_bitmap_paint(rdpContext* context, rdpBitmap* bitmap) {
+BOOL guac_rdp_bitmap_paint(rdpContext* context, rdpBitmap* bitmap) {
 
     guac_client* client = ((rdp_freerdp_context*) context)->client;
     guac_rdp_client* rdp_client = (guac_rdp_client*) client->data;
@@ -145,6 +143,8 @@ void guac_rdp_bitmap_paint(rdpContext* context, rdpBitmap* bitmap) {
     /* Increment usage counter */
     ((guac_rdp_bitmap*) bitmap)->used++;
 
+		return TRUE;
+
 }
 
 void guac_rdp_bitmap_free(rdpContext* context, rdpBitmap* bitmap) {
@@ -159,7 +159,7 @@ void guac_rdp_bitmap_free(rdpContext* context, rdpBitmap* bitmap) {
 
 }
 
-void guac_rdp_bitmap_setsurface(rdpContext* context, rdpBitmap* bitmap, BOOL primary) {
+BOOL guac_rdp_bitmap_setsurface(rdpContext* context, rdpBitmap* bitmap, BOOL primary) {
 
     guac_client* client = ((rdp_freerdp_context*) context)->client;
     guac_rdp_client* rdp_client = (guac_rdp_client*) client->data;
@@ -172,7 +172,7 @@ void guac_rdp_bitmap_setsurface(rdpContext* context, rdpBitmap* bitmap, BOOL pri
         /* Make sure that the recieved bitmap is not NULL before processing */
         if (bitmap == NULL) {
             guac_client_log(client, GUAC_LOG_INFO, "NULL bitmap found in bitmap_setsurface instruction.");
-            return;
+						return FALSE;
         }
 
         /* If not available as a surface, make available. */
@@ -184,80 +184,58 @@ void guac_rdp_bitmap_setsurface(rdpContext* context, rdpBitmap* bitmap, BOOL pri
 
     }
 
+		return TRUE;
+
 }
 
-#ifdef LEGACY_RDPBITMAP
-void guac_rdp_bitmap_decompress(rdpContext* context, rdpBitmap* bitmap, UINT8* data,
-        int width, int height, int bpp, int length, BOOL compressed) {
-#else
-void guac_rdp_bitmap_decompress(rdpContext* context, rdpBitmap* bitmap, UINT8* data,
-        int width, int height, int bpp, int length, BOOL compressed, int codec_id) {
-#endif
+BOOL guac_rdp_bitmap_decompress(rdpContext* context, rdpBitmap* bitmap, const BYTE* data, UINT32 width, UINT32 height, UINT32 bpp, UINT32 length, BOOL compressed, UINT32 codec_id) {
 
-    int size = width * height * 4;
+    int size = width * height * GetBytesPerPixel(PIXEL_FORMAT_XRGB32);
 
-#ifdef FREERDP_BITMAP_REQUIRES_ALIGNED_MALLOC
     /* Free pre-existing data, if any (might be reused) */
     if (bitmap->data != NULL)
         _aligned_free(bitmap->data);
 
     /* Allocate new data */
     bitmap->data = (UINT8*) _aligned_malloc(size, 16);
-#else
-    /* Free pre-existing data, if any (might be reused) */
-    free(bitmap->data);
-
-    /* Allocate new data */
-    bitmap->data = (UINT8*) malloc(size);
-#endif
 
     if (compressed) {
 
-#ifdef HAVE_RDPCONTEXT_CODECS 
         rdpCodecs* codecs = context->codecs;
 
         /* Decode as interleaved if less than 32 bits per pixel */
         if (bpp < 32) {
-            freerdp_client_codecs_prepare(codecs, FREERDP_CODEC_INTERLEAVED);
-#ifdef INTERLEAVED_DECOMPRESS_TAKES_PALETTE
-            interleaved_decompress(codecs->interleaved, data, length, bpp,
-                &(bitmap->data), PIXEL_FORMAT_XRGB32, -1, 0, 0, width, height,
-                (BYTE*) ((rdp_freerdp_context*) context)->palette);
-            bitmap->bpp = 32;
-#else
-            interleaved_decompress(codecs->interleaved, data, length, bpp,
-                &(bitmap->data), PIXEL_FORMAT_XRGB32, -1, 0, 0, width, height);
-            bitmap->bpp = bpp;
-#endif
+            freerdp_client_codecs_prepare(codecs, FREERDP_CODEC_INTERLEAVED, width, height);
+						if (!interleaved_decompress(codecs->interleaved, data, length, width, height, bpp,
+							&(bitmap->data), PIXEL_FORMAT_XRGB32, 0, 0, 0, width, height,
+							((rdp_freerdp_context*)context)->clrconv))
+							return FALSE;
+//            bitmap->bpp = 32;
         }
 
         /* Otherwise, decode as planar */
         else {
-            freerdp_client_codecs_prepare(codecs, FREERDP_CODEC_PLANAR);
-#ifdef PLANAR_DECOMPRESS_CAN_FLIP
-            planar_decompress(codecs->planar, data, length,
-                &(bitmap->data), PIXEL_FORMAT_XRGB32, -1, 0, 0, width, height,
-                TRUE);
-            bitmap->bpp = 32;
-#else
-            planar_decompress(codecs->planar, data, length,
-                &(bitmap->data), PIXEL_FORMAT_XRGB32, -1, 0, 0, width, height);
-            bitmap->bpp = bpp;
-#endif
+            freerdp_client_codecs_prepare(codecs, FREERDP_CODEC_PLANAR, width, height);
+						if (!planar_decompress(codecs->planar, data, length, width, height,
+							&(bitmap->data), PIXEL_FORMAT_XRGB32, 0, 0, 0, width, height,
+							TRUE))
+							return FALSE;
+//            bitmap->bpp = 32;
         }
-#else
-        bitmap_decompress(data, bitmap->data, width, height, length, bpp, bpp);
-        bitmap->bpp = bpp;
-#endif
 
     }
     else {
-        freerdp_image_flip(data, bitmap->data, width, height, bpp);
-        bitmap->bpp = bpp;
+
+				if (!freerdp_image_copy(bitmap->data, bitmap->format, 0, 0, 0,
+																width, height, data, bitmap->format,
+																0, 0, 0, ((rdp_freerdp_context*)context)->clrconv, FREERDP_FLIP_VERTICAL))
+					return FALSE;
     }
 
     bitmap->compressed = FALSE;
     bitmap->length = size;
+
+		return TRUE;
 
 }
 

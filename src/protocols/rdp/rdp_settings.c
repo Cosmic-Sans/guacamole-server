@@ -28,13 +28,7 @@
 #include <freerdp/constants.h>
 #include <freerdp/settings.h>
 #include <guacamole/user.h>
-
-#ifdef ENABLE_WINPR
 #include <winpr/wtypes.h>
-#else
-#include "compat/winpr-wtypes.h"
-#endif
-
 #include <stddef.h>
 #include <string.h>
 
@@ -1354,7 +1348,6 @@ void guac_rdp_push_settings(guac_rdp_settings* guac_settings, freerdp* rdp) {
 #else
     rdp_settings->Authentication = !guac_settings->disable_authentication;
     rdp_settings->IgnoreCertificate = guac_settings->ignore_certificate;
-    rdp_settings->DisableEncryption = FALSE;
 #endif
 
     /* RemoteApp */

@@ -527,6 +527,9 @@ typedef struct guac_rdp_settings {
  *     guac_rdp_settings_free() when no longer needed. If the arguments fail
  *     to parse, NULL is returned.
  */
+#ifdef __cplusplus
+extern "C"
+#endif
 guac_rdp_settings* guac_rdp_parse_args(guac_user* user,
         int argc, const char** argv);
 

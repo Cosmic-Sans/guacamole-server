@@ -26,13 +26,7 @@
 
 #include <freerdp/freerdp.h>
 #include <guacamole/layer.h>
-
-#ifdef ENABLE_WINPR
 #include <winpr/wtypes.h>
-#else
-#include "compat/winpr-wtypes.h"
-#endif
-
 /**
  * Guacamole-specific rdpBitmap data.
  */
@@ -78,7 +72,7 @@ void guac_rdp_cache_bitmap(rdpContext* context, rdpBitmap* bitmap);
  * @param bitmap
  *     The bitmap to initialize.
  */
-void guac_rdp_bitmap_new(rdpContext* context, rdpBitmap* bitmap);
+BOOL guac_rdp_bitmap_new(rdpContext* context, rdpBitmap* bitmap);
 
 /**
  * Paints the given rdpBitmap on the primary display surface. Note that this
@@ -93,7 +87,7 @@ void guac_rdp_bitmap_new(rdpContext* context, rdpBitmap* bitmap);
  *     the paint operation to perform, including the destination X/Y
  *     coordinates.
  */
-void guac_rdp_bitmap_paint(rdpContext* context, rdpBitmap* bitmap);
+BOOL guac_rdp_bitmap_paint(rdpContext* context, rdpBitmap* bitmap);
 
 /**
  * Frees any Guacamole-specific data associated with the given rdpBitmap.
@@ -123,44 +117,9 @@ void guac_rdp_bitmap_free(rdpContext* context, rdpBitmap* bitmap);
  *     surface should be reset to the primary drawing surface of the remote
  *     display, FALSE otherwise.
  */
-void guac_rdp_bitmap_setsurface(rdpContext* context, rdpBitmap* bitmap,
+BOOL guac_rdp_bitmap_setsurface(rdpContext* context, rdpBitmap* bitmap,
         BOOL primary);
 
-#ifdef LEGACY_RDPBITMAP
-/**
- * Decompresses or copies the given image data, storing the result within the
- * given bitmap, depending on the compressed flag. Note that even if the
- * received data is not compressed, it is the duty of this function to also
- * flip received data, if the row order is backwards.
- *
- * @param context
- *     The rdpContext associated with the current RDP session.
- *
- * @param bitmap
- *     The bitmap in which the decompressed/copied data should be stored.
- *
- * @param data
- *     Possibly-compressed image data.
- *
- * @param width
- *     The width of the image data, in pixels.
- *
- * @param height
- *     The height of the image data, in pixels.
- *
- * @param bpp
- *     The number of bits per pixel in the image data.
- *
- * @param length
- *     The length of the image data, in bytes.
- *
- * @param compressed
- *     TRUE if the image data is compressed, FALSE otherwise.
- */
-void guac_rdp_bitmap_decompress(rdpContext* context, rdpBitmap* bitmap,
-        UINT8* data, int width, int height, int bpp, int length,
-        BOOL compressed);
-#else
 /**
  * Decompresses or copies the given image data, storing the result within the
  * given bitmap, depending on the compressed flag. Note that even if the
@@ -195,9 +154,6 @@ void guac_rdp_bitmap_decompress(rdpContext* context, rdpBitmap* bitmap,
  *     The ID of the codec used to compress the image data. This parameter is
  *     currently ignored.
  */
-void guac_rdp_bitmap_decompress(rdpContext* context, rdpBitmap* bitmap,
-        UINT8* data, int width, int height, int bpp, int length,
-        BOOL compressed, int codec_id);
-#endif
+BOOL guac_rdp_bitmap_decompress(rdpContext* context, rdpBitmap* bitmap, const BYTE* data, UINT32 width, UINT32 height, UINT32 bpp, UINT32 length, BOOL compressed, UINT32 codec_id);
 
 #endif
