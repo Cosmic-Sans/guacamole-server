@@ -19,7 +19,6 @@
 
 #include "config.h"
 
-#include "common/recording.h"
 #include "client.h"
 #include "rdp.h"
 #include "rdp_fs.h"
