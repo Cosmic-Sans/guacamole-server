@@ -27,6 +27,7 @@
 #include "common/list.h"
 #include "common/recording.h"
 #include "common/surface.h"
+#include "guac_rdpsnd/rdpsnd_service.h"
 #include "keyboard.h"
 #include "rdp_settings.h"
 
@@ -179,6 +180,8 @@ typedef struct rdp_freerdp_context {
      * The current color palette, as received from the RDP server.
      */
     UINT32 palette[256];
+
+    guac_rdpsndArgs rdpsnd_args;
 
 } rdp_freerdp_context;
 

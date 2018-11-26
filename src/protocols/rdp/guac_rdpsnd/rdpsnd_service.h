@@ -23,7 +23,10 @@
 
 #include "config.h"
 
-#include <freerdp/utils/svc_plugin.h>
+//#include <freerdp/utils/svc_plugin.h>
+#include <freerdp/types.h>
+#include <freerdp/channels/rdpsnd.h>
+#include <freerdp/client/rdpsnd.h>
 #include <guacamole/client.h>
 
 #ifdef ENABLE_WINPR
@@ -74,7 +77,7 @@ typedef struct guac_rdpsndPlugin {
      * FreeRDP depends on accessing this structure as if it were an instance
      * of rdpSvcPlugin.
      */
-    rdpSvcPlugin plugin;
+	  rdpsndDevicePlugin device;
 
     /**
      * The Guacamole client associated with the guac_audio_stream that this
@@ -125,27 +128,29 @@ typedef struct guac_rdpsndPlugin {
 
 } guac_rdpsndPlugin;
 
-/**
- * Handler called when this plugin is loaded by FreeRDP.
- */
-void guac_rdpsnd_process_connect(rdpSvcPlugin* plugin);
+typedef struct guac_rdpsndArgs {
+    ADDIN_ARGV addin_argv;
+    guac_client* guac_client;
+} guac_rdpsndArgs;
 
-/**
- * Handler called when this plugin receives data along its designated channel.
- */
-void guac_rdpsnd_process_receive(rdpSvcPlugin* plugin,
-        wStream* input_stream);
+UINT guac_rdpsnd_VirtualChannelEntry(PFREERDP_RDPSND_DEVICE_ENTRY_POINTS pEntryPoints);
 
-/**
- * Handler called when this plugin is being unloaded.
- */
-void guac_rdpsnd_process_terminate(rdpSvcPlugin* plugin);
+BOOL guac_rdpsnd_open(rdpsndDevicePlugin* device, const AUDIO_FORMAT* format,
+  UINT32 latency);
 
-/**
- * Handler called when this plugin receives an event. For the sake of RDPSND,
- * all events will be ignored and simply free'd.
- */
-void guac_rdpsnd_process_event(rdpSvcPlugin* plugin, wMessage* event);
+BOOL guac_rdpsnd_format_supported(rdpsndDevicePlugin* device, const AUDIO_FORMAT* format);
+
+UINT32 guac_rdpsnd_get_volume(rdpsndDevicePlugin* device);
+
+BOOL guac_rdpsnd_set_volume(rdpsndDevicePlugin* device, UINT32 value);
+
+void guac_rdpsnd_start(rdpsndDevicePlugin* device);
+
+UINT guac_rdpsnd_play(rdpsndDevicePlugin* device, const BYTE* data, size_t size);
+
+void guac_rdpsnd_close(rdpsndDevicePlugin* device);
+
+void guac_rdpsnd_free(rdpsndDevicePlugin* device);
 
 #endif
 

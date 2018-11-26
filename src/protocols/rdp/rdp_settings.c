@@ -1379,6 +1379,7 @@ void guac_rdp_push_settings(guac_rdp_settings* guac_settings, freerdp* rdp) {
         rdp_settings->NegotiateSecurityLayer = FALSE;
         rdp_settings->SendPreconnectionPdu = TRUE;
         rdp_settings->PreconnectionBlob = guac_settings->preconnection_blob;
+        rdp_settings->VmConnectMode = TRUE;
     }
 #endif
 

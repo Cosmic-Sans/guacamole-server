@@ -31,6 +31,7 @@
 #include "rdp_glyph.h"
 #include "rdp_pointer.h"
 #include "rdp_stream.h"
+#include "guac_rdpsnd/rdpsnd_service.h"
 
 #ifdef ENABLE_COMMON_SSH
 #include "common-ssh/sftp.h"
@@ -201,7 +202,48 @@ static void guac_rdp_channel_disconnected(
 
 }
 
-static ADDIN_ARGV rdpsnd_args = { 2, (char*[]){ "rdpsnd", "sys:guac_snd" } };
+static BOOL rdp_freerdp_client_load_static_channel_addin(rdpChannels* channels,
+        rdpSettings* settings, char* name, void* data)
+{
+	PVIRTUALCHANNELENTRY entry = NULL;
+	PVIRTUALCHANNELENTRYEX entryEx = NULL;
+	entryEx = (PVIRTUALCHANNELENTRYEX) freerdp_load_channel_addin_entry(name, NULL, NULL,
+	          FREERDP_ADDIN_CHANNEL_STATIC | FREERDP_ADDIN_CHANNEL_ENTRYEX);
+
+	if (!entryEx)
+		entry = freerdp_load_channel_addin_entry(name, NULL, NULL, FREERDP_ADDIN_CHANNEL_STATIC);
+
+	if (entryEx)
+	{
+		if (freerdp_channels_client_load_ex(channels, settings, entryEx, data) == 0)
+		{
+			//WLog_INFO(TAG, "loading channelEx %s", name);
+			return TRUE;
+		}
+	}
+	else if (entry)
+	{
+		if (freerdp_channels_client_load(channels, settings, entry, data) == 0)
+		{
+			//WLog_INFO(TAG, "loading channel %s", name);
+			return TRUE;
+		}
+	}
+
+	return FALSE;
+}
+
+PVIRTUALCHANNELENTRY guac_channels_load_static_addin_entry(LPCSTR pszName,
+                                                           LPSTR pszSubsystem,
+                                                           LPSTR pszType,
+                                                           DWORD dwFlags)
+{
+  if (strcmp(pszName, "rdpsnd") == 0
+      && pszSubsystem != NULL && strcmp(pszSubsystem, "guac_snd") == 0) {
+    return guac_rdpsnd_VirtualChannelEntry;
+  }
+  return freerdp_channels_load_static_addin_entry(pszName, pszSubsystem, pszType, dwFlags);
+}
 
 BOOL rdp_freerdp_pre_connect(freerdp* instance) {
 
@@ -212,10 +254,7 @@ BOOL rdp_freerdp_pre_connect(freerdp* instance) {
     guac_rdp_client* rdp_client = (guac_rdp_client*) client->data;
     guac_rdp_settings* settings = rdp_client->settings;
 
-#ifdef HAVE_FREERDP_REGISTER_ADDIN_PROVIDER
-    /* Init FreeRDP add-in provider */
-    freerdp_register_addin_provider(freerdp_channels_load_static_addin_entry, 0);
-#endif
+    freerdp_register_addin_provider(guac_channels_load_static_addin_entry, 0);
 
     /* Subscribe to and handle channel connected events */
     PubSub_SubscribeChannelConnected(context->pubSub,
@@ -242,20 +281,18 @@ BOOL rdp_freerdp_pre_connect(freerdp* instance) {
         || settings->audio_enabled) {
 
         /* Load RDPDR plugin */
-        if (freerdp_channels_load_plugin(channels, instance->settings,
-                    "guacdr", client))
-            guac_client_log(client, GUAC_LOG_WARNING,
-                    "Failed to load guacdr plugin. Drive redirection and "
-                    "printing will not work. Sound MAY not work.");
+        if (!rdp_freerdp_client_load_static_channel_addin(
+              channels, instance->settings, "rdpdr", instance->settings))
+          return FALSE;
 
         /* Load RDPSND plugin */
-        if (freerdp_channels_load_plugin(channels, instance->settings,
-                    "rdpsnd", &rdpsnd_args))
+        if (!rdp_freerdp_client_load_static_channel_addin(channels,
+                instance->settings, "rdpsnd",
+                &((rdp_freerdp_context*) context)->rdpsnd_args))
             guac_client_log(client, GUAC_LOG_WARNING,
                     "Failed to load guacsnd alongside guacdr plugin. Sound "
                     "will not work. Drive redirection and printing MAY not "
                     "work.");
-
     }
 
     /* Load RAIL plugin if RemoteApp in use */
@@ -457,6 +494,8 @@ static DWORD rdp_freerdp_verify_certificate(freerdp* instance,
 
 }
 
+static ADDIN_ARGV rdpsnd_args = { 2, (char*[]){ "rdpsnd", "sys:guac_snd" } };
+
 /**
  * Callback invoked by FreeRDP after a new rdpContext has been allocated and
  * associated with the current FreeRDP instance.
@@ -469,13 +508,13 @@ static DWORD rdp_freerdp_verify_certificate(freerdp* instance,
  */
 static BOOL rdp_freerdp_context_new(freerdp* instance, rdpContext* context) {
 //    context->channels = freerdp_channels_new();
+    ((rdp_freerdp_context*)context)->rdpsnd_args.addin_argv = rdpsnd_args;
+
 		return TRUE;
 }
 
 /**
- * Callback invoked by FreeRDP when the rdpContext is being freed. This must be
- * provided, but there is no Guacamole-specific data associated with the
- * FreeRDP context, so nothing is done here.
+ * Callback invoked by FreeRDP when the rdpContext is being freed.
  *
  * @param instance
  *     The FreeRDP instance whose context is being freed.
@@ -596,6 +635,7 @@ static int guac_rdp_handle_connection(guac_client* client) {
 
     freerdp_context_new(rdp_inst);
     ((rdp_freerdp_context*) rdp_inst->context)->client = client;
+    ((rdp_freerdp_context*) rdp_inst->context)->rdpsnd_args.guac_client = client;
 
     /* Load keymap into client */
     rdp_client->keyboard = guac_rdp_keyboard_alloc(client,
