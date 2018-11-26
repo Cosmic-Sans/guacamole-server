@@ -34,7 +34,7 @@
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <syslog.h>
+//#include <syslog.h>
 
 void guac_vnc_client_log_info(const char* format, ...) {
 
@@ -47,7 +47,7 @@ void guac_vnc_client_log_info(const char* format, ...) {
     va_end(args);
 
     /* Log to syslog */
-    syslog(LOG_INFO, "%s", message);
+    //syslog(LOG_INFO, "%s", message);
 
 }
 
@@ -62,7 +62,7 @@ void guac_vnc_client_log_error(const char* format, ...) {
     va_end(args);
 
     /* Log to syslog */
-    syslog(LOG_ERR, "%s", message);
+    //syslog(LOG_ERR, "%s", message);
 
 }
 
