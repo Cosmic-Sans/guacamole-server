@@ -38,6 +38,9 @@
 #include <cairo/cairo.h>
 #include <stdarg.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
 /* CONTROL INSTRUCTIONS */
 
 /**
@@ -68,18 +71,6 @@ int guac_protocol_send_ack(guac_socket* socket, guac_stream* stream,
  * @return Zero on success, non-zero on error.
  */
 int guac_protocol_send_args(guac_socket* socket, const char** args);
-
-/**
- * Sends a connect instruction over the given guac_socket connection.
- *
- * If an error occurs sending the instruction, a non-zero value is
- * returned, and guac_error is set appropriately.
- *
- * @param socket The guac_socket connection to use.
- * @param args The NULL-terminated array of argument values (strings).
- * @return Zero on success, non-zero on error.
- */
-int guac_protocol_send_connect(guac_socket* socket, const char** args);
 
 /**
  * Sends a disconnect instruction over the given guac_socket connection.
@@ -262,18 +253,6 @@ int guac_protocol_send_ready(guac_socket* socket, const char* id);
  */
 int guac_protocol_send_set(guac_socket* socket, const guac_layer* layer,
         const char* name, const char* value);
-
-/**
- * Sends a select instruction over the given guac_socket connection.
- *
- * If an error occurs sending the instruction, a non-zero value is
- * returned, and guac_error is set appropriately.
- *
- * @param socket The guac_socket connection to use.
- * @param protocol The protocol to request.
- * @return Zero on success, non-zero on error.
- */
-int guac_protocol_send_select(guac_socket* socket, const char* protocol);
 
 /**
  * Sends a sync instruction over the given guac_socket connection. The
@@ -942,6 +921,10 @@ int guac_protocol_send_name(guac_socket* socket, const char* name);
  * @return The number of bytes resulting from the decode operation.
  */
 int guac_protocol_decode_base64(char* base64);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif
 

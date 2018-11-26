@@ -41,7 +41,6 @@ guac_pool* guac_pool_alloc(int size) {
 
     /* Init lock */
     pthread_mutexattr_init(&lock_attributes);
-    pthread_mutexattr_setpshared(&lock_attributes, PTHREAD_PROCESS_SHARED);
     pthread_mutex_init(&(pool->__lock), &lock_attributes);
 
     return pool;

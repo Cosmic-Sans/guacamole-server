@@ -17,43 +17,35 @@
  * under the License.
  */
 
+extern "C" {
 #include "config.h"
-#include "buffer.h"
 #include "display.h"
 #include "log.h"
 
-#include <cairo/cairo.h>
 #include <guacamole/client.h>
+}
+#include "Guacamole.capnp.h"
 
 #include <stdlib.h>
 
-int guacenc_handle_rect(guacenc_display* display, int argc, char** argv) {
- 
-    /* Verify argument count */
-    if (argc < 5) {
-        guacenc_log(GUAC_LOG_WARNING, "\"rect\" instruction incomplete");
-        return 1;
-    }
+int guacenc_handle_transfer(guacenc_display* display, Guacamole::GuacServerInstruction::Reader instr) {
 
     /* Parse arguments */
-    int index = atoi(argv[0]);
-    int x = atoi(argv[1]);
-    int y = atoi(argv[2]);
-    int width = atoi(argv[3]);
-    int height = atoi(argv[4]);
+    const auto transfer = instr.getTransfer();
+    int src_index = transfer.getSrcLayer();
+    int src_x = transfer.getSrcX();
+    int src_y = transfer.getSrcY();
+    int src_w = transfer.getSrcWidth();
+    int src_h = transfer.getSrcHeight();
+    int function = transfer.getFunction();
+    int dst_index = transfer.getDstLayer();
+    int dst_x = transfer.getDstX();
+    int dst_y = transfer.getDstY();
 
-    /* Pull buffer of requested layer/buffer */
-    guacenc_buffer* buffer = guacenc_display_get_related_buffer(display, index);
-    if (buffer == NULL)
-        return 1;
-
-    /* Expand the buffer as necessary to fit the draw operation */
-    if (buffer->autosize)
-        guacenc_buffer_fit(buffer, x + width, y + height);
-
-    /* Set path to rectangle */
-    if (buffer->cairo != NULL)
-        cairo_rectangle(buffer->cairo, x, y, width, height);
+    /* TODO: Unimplemented for now (rarely used) */
+    guacenc_log(GUAC_LOG_DEBUG, "transform: src_layer=%i (%i, %i) %ix%i "
+            "function=0x%X dst_layer=%i (%i, %i)", src_index, src_x, src_y,
+            src_w, src_h, function, dst_index, dst_x, dst_y);
 
     return 0;
 

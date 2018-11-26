@@ -17,6 +17,7 @@
  * under the License.
  */
 
+extern "C" {
 #include "config.h"
 #include "buffer.h"
 #include "cursor.h"
@@ -24,25 +25,22 @@
 #include "log.h"
 
 #include <guacamole/client.h>
+}
+#include "Guacamole.capnp.h"
 
 #include <stdlib.h>
 
-int guacenc_handle_cursor(guacenc_display* display, int argc, char** argv) {
-
-    /* Verify argument count */
-    if (argc < 7) {
-        guacenc_log(GUAC_LOG_WARNING, "\"cursor\" instruction incomplete");
-        return 1;
-    }
+int guacenc_handle_cursor(guacenc_display* display, Guacamole::GuacServerInstruction::Reader instr) {
 
     /* Parse arguments */
-    int hotspot_x = atoi(argv[0]);
-    int hotspot_y = atoi(argv[1]);
-    int sindex = atoi(argv[2]);
-    int sx = atoi(argv[3]);
-    int sy = atoi(argv[4]);
-    int width = atoi(argv[5]);
-    int height = atoi(argv[6]);
+    const auto cursor_instr = instr.getCursor();
+    int hotspot_x = cursor_instr.getX();
+    int hotspot_y = cursor_instr.getY();
+    int sindex = cursor_instr.getSrcLayer();
+    int sx = cursor_instr.getSrcX();
+    int sy = cursor_instr.getSrcY();
+    int width = cursor_instr.getSrcWidth();
+    int height = cursor_instr.getSrcHeight();
 
     /* Pull buffer of source layer/buffer */
     guacenc_buffer* src = guacenc_display_get_related_buffer(display, sindex);

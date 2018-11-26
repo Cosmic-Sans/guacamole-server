@@ -427,7 +427,6 @@ guac_socket* guac_socket_open_wsa(SOCKET sock) {
     socket->data = data;
 
     pthread_mutexattr_init(&lock_attributes);
-    pthread_mutexattr_setpshared(&lock_attributes, PTHREAD_PROCESS_SHARED);
 
     /* Init locks */
     pthread_mutex_init(&(data->socket_lock), &lock_attributes);

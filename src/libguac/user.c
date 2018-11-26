@@ -23,7 +23,6 @@
 #include "encode-jpeg.h"
 #include "encode-png.h"
 #include "encode-webp.h"
-#include "id.h"
 #include "object.h"
 #include "pool.h"
 #include "protocol.h"
@@ -31,7 +30,6 @@
 #include "stream.h"
 #include "timestamp.h"
 #include "user.h"
-#include "user-handlers.h"
 
 #include <errno.h>
 #include <limits.h>
@@ -42,13 +40,6 @@ guac_user* guac_user_alloc() {
 
     guac_user* user = calloc(1, sizeof(guac_user));
     int i;
-
-    /* Generate ID */
-    user->user_id = guac_generate_id(GUAC_USER_ID_PREFIX);
-    if (user->user_id == NULL) {
-        free(user);
-        return NULL;
-    }
 
     user->last_received_timestamp = guac_timestamp_current();
     user->last_frame_duration = 0;
@@ -164,24 +155,6 @@ void guac_user_free_object(guac_user* user, guac_object* object) {
 
     /* Mark object as undefined */
     object->index = GUAC_USER_UNDEFINED_OBJECT_INDEX;
-
-}
-
-int guac_user_handle_instruction(guac_user* user, const char* opcode, int argc, char** argv) {
-
-    /* For each defined instruction */
-    __guac_instruction_handler_mapping* current = __guac_instruction_handler_map;
-    while (current->opcode != NULL) {
-
-        /* If recognized, call handler */
-        if (strcmp(opcode, current->opcode) == 0)
-            return current->handler(user, argc, argv);
-
-        current++;
-    }
-
-    /* If unrecognized, ignore */
-    return 0;
 
 }
 

@@ -24,7 +24,6 @@
 #include "encode-png.h"
 #include "encode-webp.h"
 #include "error.h"
-#include "id.h"
 #include "layer.h"
 #include "pool.h"
 #include "plugin.h"
@@ -34,7 +33,6 @@
 #include "timestamp.h"
 #include "user.h"
 
-#include <dlfcn.h>
 #include <inttypes.h>
 #include <pthread.h>
 #include <stdarg.h>
@@ -147,13 +145,6 @@ guac_client* guac_client_alloc() {
     client->state = GUAC_CLIENT_RUNNING;
     client->last_sent_timestamp = guac_timestamp_current();
 
-    /* Generate ID */
-    client->connection_id = guac_generate_id(GUAC_CLIENT_ID_PREFIX);
-    if (client->connection_id == NULL) {
-        free(client);
-        return NULL;
-    }
-
     /* Allocate buffer and layer pools */
     client->__buffer_pool = guac_pool_alloc(GUAC_BUFFER_POOL_INITIAL_SIZE);
     client->__layer_pool = guac_pool_alloc(GUAC_BUFFER_POOL_INITIAL_SIZE);
@@ -171,12 +162,8 @@ guac_client* guac_client_alloc() {
 
     /* Init locks */
     pthread_rwlockattr_init(&lock_attributes);
-    pthread_rwlockattr_setpshared(&lock_attributes, PTHREAD_PROCESS_SHARED);
 
     pthread_rwlock_init(&(client->__users_lock), &lock_attributes);
-
-    /* Set up socket to broadcast to all users */
-    client->socket = guac_socket_broadcast(client);
 
     return client;
 
@@ -208,14 +195,7 @@ void guac_client_free(guac_client* client) {
     /* Free stream pool */
     guac_pool_free(client->__stream_pool);
 
-    /* Close associated plugin */
-    if (client->__plugin_handle != NULL) {
-        if (dlclose(client->__plugin_handle))
-            guac_client_log(client, GUAC_LOG_ERROR, "Unable to close plugin: %s", dlerror());
-    }
-
     pthread_rwlock_destroy(&(client->__users_lock));
-    free(client->connection_id);
     free(client);
 }
 
@@ -284,10 +264,10 @@ int guac_client_add_user(guac_client* client, guac_user* user, int argc, char** 
     if (client->join_handler)
         retval = client->join_handler(user, argc, argv);
 
-    pthread_rwlock_wrlock(&(client->__users_lock));
-
     /* Add to list if join was successful */
     if (retval == 0) {
+
+				pthread_rwlock_wrlock(&(client->__users_lock));
 
         user->__prev = NULL;
         user->__next = client->__users;
@@ -302,9 +282,9 @@ int guac_client_add_user(guac_client* client, guac_user* user, int argc, char** 
         if (user->owner)
             client->__owner = user;
 
-    }
+				pthread_rwlock_unlock(&(client->__users_lock));
 
-    pthread_rwlock_unlock(&(client->__users_lock));
+    }
 
     return retval;
 
@@ -421,54 +401,6 @@ int guac_client_end_frame(guac_client* client) {
             "frame %" PRIu64 "ms.", client->last_sent_timestamp);
 
     return guac_protocol_send_sync(client->socket, client->last_sent_timestamp);
-
-}
-
-int guac_client_load_plugin(guac_client* client, const char* protocol) {
-
-    /* Reference to dlopen()'d plugin */
-    void* client_plugin_handle;
-
-    /* Pluggable client */
-    char protocol_lib[GUAC_PROTOCOL_LIBRARY_LIMIT] =
-        GUAC_PROTOCOL_LIBRARY_PREFIX;
-
-    /* Type-pun for the sake of dlsym() - cannot typecast a void* to a function
-     * pointer otherwise */ 
-    union {
-        guac_client_init_handler* client_init;
-        void* obj;
-    } alias;
-
-    /* Add protocol and .so suffix to protocol_lib */
-    strncat(protocol_lib, protocol, GUAC_PROTOCOL_NAME_LIMIT-1);
-    strcat(protocol_lib, GUAC_PROTOCOL_LIBRARY_SUFFIX);
-
-    /* Load client plugin */
-    client_plugin_handle = dlopen(protocol_lib, RTLD_LAZY);
-    if (!client_plugin_handle) {
-        guac_error = GUAC_STATUS_NOT_FOUND;
-        guac_error_message = dlerror();
-        return -1;
-    }
-
-    dlerror(); /* Clear errors */
-
-    /* Get init function */
-    alias.obj = dlsym(client_plugin_handle, "guac_client_init");
-
-    /* Fail if cannot find guac_client_init */
-    if (dlerror() != NULL) {
-        guac_error = GUAC_STATUS_INTERNAL_ERROR;
-        guac_error_message = dlerror();
-        dlclose(client_plugin_handle);
-        return -1;
-    }
-
-    /* Init client */
-    client->__plugin_handle = client_plugin_handle;
-
-    return alias.client_init(client);
 
 }
 

@@ -17,6 +17,7 @@
  * under the License.
  */
 
+extern "C" {
 #include "config.h"
 #include "display.h"
 #include "log.h"
@@ -24,20 +25,16 @@
 
 #include <guacamole/client.h>
 #include <guacamole/timestamp.h>
+}
+#include "Guacamole.capnp.h"
 
 #include <inttypes.h>
 #include <stdlib.h>
 
-int guacenc_handle_sync(guacenc_display* display, int argc, char** argv) {
-
-    /* Verify argument count */
-    if (argc < 1) {
-        guacenc_log(GUAC_LOG_WARNING, "\"sync\" instruction incomplete");
-        return 1;
-    }
+int guacenc_handle_sync(guacenc_display* display, Guacamole::GuacServerInstruction::Reader instr) {
 
     /* Parse arguments */
-    guac_timestamp timestamp = guacenc_parse_timestamp(argv[0]);
+    guac_timestamp timestamp = instr.getSync();
 
     /* Update timestamp / flush frame */
     return guacenc_display_sync(display, timestamp);

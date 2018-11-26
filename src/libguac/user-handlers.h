@@ -30,8 +30,10 @@
  */
 
 #include "config.h"
+#include <utility>
 
 #include "client.h"
+#include "Guacamole.capnp.h"
 #include "timestamp.h"
 
 /**
@@ -43,33 +45,13 @@
  * @param user
  *     The user that sent the instruction.
  *
- * @param argc
- *     The number of arguments in argv.
- *
- * @param argv
- *     The arguments included with the instruction, excluding the opcode.
+ * @param instr
+ *     The instruction.
  *
  * @return
  *     Zero if the instruction was successfully handled, non-zero otherwise.
  */
-typedef int __guac_instruction_handler(guac_user* user, int argc, char** argv);
-
-/**
- * Structure mapping an instruction opcode to an instruction handler.
- */
-typedef struct __guac_instruction_handler_mapping {
-
-    /**
-     * The instruction opcode which maps to a specific handler.
-     */
-    char* opcode;
-
-    /**
-     * The handler which maps to a specific opcode.
-     */
-    __guac_instruction_handler* handler;
-
-} __guac_instruction_handler_mapping;
+typedef int __guac_instruction_handler(guac_user* user, Guacamole::GuacClientInstruction::Reader instr);
 
 /**
  * Internal initial handler for the sync instruction. When a sync instruction
@@ -170,13 +152,6 @@ __guac_instruction_handler __guac_handle_size;
  */
 __guac_instruction_handler __guac_handle_disconnect;
 
-/**
- * Instruction handler mapping table. This is a NULL-terminated array of
- * __guac_instruction_handler_mapping structures, each mapping an opcode
- * to a __guac_instruction_handler. The end of the array must be marked
- * with a __guac_instruction_handler_mapping with the opcode set to
- * NULL (the NULL terminator).
- */
-extern __guac_instruction_handler_mapping __guac_instruction_handler_map[];
+int guac_call_instruction_handler(guac_user* user, Guacamole::GuacClientInstruction::Reader instr);
 
 #endif

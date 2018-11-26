@@ -28,7 +28,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/time.h>
 #include <unistd.h>
 
 #ifdef ENABLE_WINSOCK
@@ -431,7 +430,6 @@ guac_socket* guac_socket_open(int fd) {
     socket->data = data;
 
     pthread_mutexattr_init(&lock_attributes);
-    pthread_mutexattr_setpshared(&lock_attributes, PTHREAD_PROCESS_SHARED);
 
     /* Init locks */
     pthread_mutex_init(&(data->socket_lock), &lock_attributes);

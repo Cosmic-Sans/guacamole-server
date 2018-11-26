@@ -17,45 +17,28 @@
  * under the License.
  */
 
+extern "C" {
 #include "config.h"
 #include "display.h"
 #include "log.h"
 
 #include <guacamole/client.h>
+}
+#include "Guacamole.capnp.h"
 
 #include <stdlib.h>
 
-int guacenc_handle_move(guacenc_display* display, int argc, char** argv) {
-
-    /* Verify argument count */
-    if (argc < 5) {
-        guacenc_log(GUAC_LOG_WARNING, "\"move\" instruction incomplete");
-        return 1;
-    }
+int guacenc_handle_dispose(guacenc_display* display, Guacamole::GuacServerInstruction::Reader instr) {
 
     /* Parse arguments */
-    int layer_index = atoi(argv[0]);
-    int parent_index = atoi(argv[1]);
-    int x = atoi(argv[2]);
-    int y = atoi(argv[3]);
-    int z = atoi(argv[4]);
+    int index = instr.getDispose();
 
-    /* Retrieve requested layer */
-    guacenc_layer* layer = guacenc_display_get_layer(display, layer_index);
-    if (layer == NULL)
-        return 1;
+    /* If non-negative, dispose of layer */
+    if (index >= 0)
+        return guacenc_display_free_layer(display, index);
 
-    /* Validate parent layer */
-    if (guacenc_display_get_layer(display, parent_index) == NULL)
-        return 1;
-
-    /* Update layer properties */
-    layer->parent_index = parent_index;
-    layer->x = x;
-    layer->y = y;
-    layer->z = z;
-
-    return 0;
+    /* Otherwise, we're referring to a buffer */
+    return guacenc_display_free_buffer(display, index);
 
 }
 

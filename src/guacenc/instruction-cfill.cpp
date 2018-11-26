@@ -17,36 +17,41 @@
  * under the License.
  */
 
+extern "C" {
 #include "config.h"
 #include "display.h"
 #include "log.h"
 
 #include <guacamole/client.h>
-#include <guacamole/protocol.h>
+}
+#include "Guacamole.capnp.h"
 
 #include <stdlib.h>
 
-int guacenc_handle_blob(guacenc_display* display, int argc, char** argv) {
+int guacenc_handle_cfill(guacenc_display* display, Guacamole::GuacServerInstruction::Reader instr) {
+ 
+    /* Parse arguments */
+    const auto cfill = instr.getCfill();
+    const auto mask = static_cast<guac_composite_mode>(cfill.getMask());
+    int index = cfill.getLayer();
+    double r = cfill.getR() / 255.0;
+    double g = cfill.getG() / 255.0;
+    double b = cfill.getB() / 255.0;
+    double a = cfill.getA() / 255.0;
 
-    /* Verify argument count */
-    if (argc < 2) {
-        guacenc_log(GUAC_LOG_WARNING, "\"blob\" instruction incomplete");
+    /* Pull buffer of requested layer/buffer */
+    guacenc_buffer* buffer = guacenc_display_get_related_buffer(display, index);
+    if (buffer == NULL)
         return 1;
+
+    /* Fill with RGBA color */
+    if (buffer->cairo != NULL) {
+        cairo_set_operator(buffer->cairo, guacenc_display_cairo_operator(mask));
+        cairo_set_source_rgba(buffer->cairo, r, g, b, a);
+        cairo_fill(buffer->cairo);
     }
 
-    /* Parse arguments */
-    int index = atoi(argv[0]);
-    char* data = argv[1];
-    int length = guac_protocol_decode_base64(data);
-
-    /* Retrieve image stream */
-    guacenc_image_stream* stream =
-        guacenc_display_get_image_stream(display, index);
-    if (stream == NULL)
-        return 1;
-
-    /* Send data to decoder within associated stream */
-    return guacenc_image_stream_receive(stream, (unsigned char*) data, length);
+    return 0;
 
 }
 

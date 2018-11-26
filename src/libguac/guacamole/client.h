@@ -265,6 +265,9 @@ struct guac_client {
  *
  * @return A pointer to the new client.
  */
+#ifdef __cplusplus
+extern "C"
+#endif
 guac_client* guac_client_alloc();
 
 /**
@@ -411,6 +414,9 @@ void guac_client_free_stream(guac_client* client, guac_stream* stream);
  * @return Zero if the user was added successfully, non-zero if the user could
  *         not join the connection.
  */
+#ifdef __cplusplus
+extern "C"
+#endif
 int guac_client_add_user(guac_client* client, guac_user* user, int argc, char** argv);
 
 /**

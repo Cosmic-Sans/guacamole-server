@@ -20,8 +20,13 @@
 #ifndef GUACENC_INSTRUCTIONS_H
 #define GUACENC_INSTRUCTIONS_H
 
+extern "C" {
 #include "config.h"
 #include "display.h"
+}
+#include "Guacamole.capnp.h"
+
+#include <utility>
 
 /**
  * A callback function which, when invoked, handles a particular Guacamole
@@ -46,33 +51,12 @@
  *     occurs.
  */
 typedef int guacenc_instruction_handler(guacenc_display* display,
-        int argc, char** argv);
+        Guacamole::GuacServerInstruction::Reader instr);
 
 /**
  * Mapping of instruction opcode to corresponding handler function.
  */
-typedef struct guacenc_instruction_handler_mapping {
-
-    /**
-     * The opcode of the instruction that the associated handler function
-     * should be invoked for.
-     */
-    const char* opcode;
-
-    /**
-     * The handler function to invoke whenever an instruction having the
-     * associated opcode is parsed.
-     */
-    guacenc_instruction_handler* handler;
-
-} guacenc_instruction_handler_mapping;
-
-/**
- * Array of all opcode/handler mappings for all supported opcodes, terminated
- * by an entry with a NULL opcode. All opcodes not listed here can be safely
- * ignored.
- */
-extern guacenc_instruction_handler_mapping guacenc_instruction_handler_map[];
+using guacenc_instruction_handler_mapping = std::pair<Guacamole::GuacServerInstruction::Which, guacenc_instruction_handler*>;
 
 /**
  * Handles the instruction having the given opcode and arguments, encoding the
@@ -97,7 +81,7 @@ extern guacenc_instruction_handler_mapping guacenc_instruction_handler_map[];
  *     occurs.
  */
 int guacenc_handle_instruction(guacenc_display* display,
-        const char* opcode, int argc, char** argv);
+                               Guacamole::GuacServerInstruction::Reader instr);
 
 /**
  * Handler for the Guacamole "blob" instruction.

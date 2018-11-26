@@ -31,66 +31,64 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include <algorithm>
+#include <iterator>
+#include <utility>
 
 /* Guacamole instruction handler map */
+// NOTE: the order of instructions must correspond to their enum values
 
+using __guac_instruction_handler_mapping = std::pair<Guacamole::GuacClientInstruction::Which, __guac_instruction_handler*>;
+constexpr
 __guac_instruction_handler_mapping __guac_instruction_handler_map[] = {
-   {"sync",       __guac_handle_sync},
-   {"mouse",      __guac_handle_mouse},
-   {"key",        __guac_handle_key},
-   {"clipboard",  __guac_handle_clipboard},
-   {"disconnect", __guac_handle_disconnect},
-   {"size",       __guac_handle_size},
-   {"file",       __guac_handle_file},
-   {"pipe",       __guac_handle_pipe},
-   {"ack",        __guac_handle_ack},
-   {"blob",       __guac_handle_blob},
-   {"end",        __guac_handle_end},
-   {"get",        __guac_handle_get},
-   {"put",        __guac_handle_put},
-   {"audio",      __guac_handle_audio},
-   {NULL,         NULL}
+    {Guacamole::GuacClientInstruction::SYNC,       __guac_handle_sync},
+    {Guacamole::GuacClientInstruction::MOUSE,      __guac_handle_mouse},
+    {Guacamole::GuacClientInstruction::KEY,        __guac_handle_key},
+    {Guacamole::GuacClientInstruction::CLIPBOARD,  __guac_handle_clipboard},
+    {Guacamole::GuacClientInstruction::DISCONNECT, __guac_handle_disconnect},
+    {Guacamole::GuacClientInstruction::SIZE,       __guac_handle_size},
+    {Guacamole::GuacClientInstruction::FILE,       __guac_handle_file},
+    {Guacamole::GuacClientInstruction::PIPE,       __guac_handle_pipe},
+    {Guacamole::GuacClientInstruction::ACK,        __guac_handle_ack},
+    {Guacamole::GuacClientInstruction::BLOB,       __guac_handle_blob},
+    {Guacamole::GuacClientInstruction::END,        __guac_handle_end},
+    {Guacamole::GuacClientInstruction::GET,        __guac_handle_get},
+    {Guacamole::GuacClientInstruction::PUT,        __guac_handle_put},
+    {Guacamole::GuacClientInstruction::AUDIO,      __guac_handle_audio},
 };
 
-/**
- * Parses a 64-bit integer from the given string. It is assumed that the string
- * will contain only decimal digits, with an optional leading minus sign.
- * The result of parsing a string which does not conform to this pattern is
- * undefined.
- *
- * @param str
- *     The string to parse, which must contain only decimal digits and an
- *     optional leading minus sign.
- *
- * @return
- *     The 64-bit integer value represented by the given string.
- */
-static int64_t __guac_parse_int(const char* str) {
+static_assert([](const auto& instr_map){
+        auto index = std::size_t(0);
+        for (auto& [opcode, handler] : instr_map) {
+            if (opcode != index++) {
+                return false;
+            }
+        }
+        return true;
+    }(__guac_instruction_handler_map),
+    "Instruction handler map not in order");
 
-    int sign = 1;
-    int64_t num = 0;
+int guac_call_instruction_handler(guac_user* user, Guacamole::GuacClientInstruction::Reader instr) {
 
-    for (; *str != '\0'; str++) {
-
-        if (*str == '-')
-            sign = -sign;
-        else
-            num = num * 10 + (*str - '0');
-
+    const auto instr_index = instr.which();
+    if (instr_index >= std::size(__guac_instruction_handler_map)) {
+      return 0;
     }
 
-    return num * sign;
+		const auto& handler_pair = __guac_instruction_handler_map[instr_index];
+		const auto handler = std::get<__guac_instruction_handler*>(handler_pair);
 
+		return handler(user, instr);
 }
 
 /* Guacamole instruction handlers */
 
-int __guac_handle_sync(guac_user* user, int argc, char** argv) {
+int __guac_handle_sync(guac_user* user, Guacamole::GuacClientInstruction::Reader instr) {
 
     int frame_duration;
 
     guac_timestamp current = guac_timestamp_current();
-    guac_timestamp timestamp = __guac_parse_int(argv[0]);
+    guac_timestamp timestamp = instr.getSync();
 
     /* Error if timestamp is in future */
     if (timestamp > user->client->last_sent_timestamp)
@@ -136,24 +134,19 @@ int __guac_handle_sync(guac_user* user, int argc, char** argv) {
     return 0;
 }
 
-int __guac_handle_mouse(guac_user* user, int argc, char** argv) {
-    if (user->mouse_handler)
-        return user->mouse_handler(
-            user,
-            atoi(argv[0]), /* x */
-            atoi(argv[1]), /* y */
-            atoi(argv[2])  /* mask */
-        );
+int __guac_handle_mouse(guac_user* user, Guacamole::GuacClientInstruction::Reader instr) {
+    if (user->mouse_handler) {
+        auto mouse = instr.getMouse();
+        return user->mouse_handler(user, mouse.getX(), mouse.getY(), mouse.getButtonMask());
+    }
     return 0;
 }
 
-int __guac_handle_key(guac_user* user, int argc, char** argv) {
-    if (user->key_handler)
-        return user->key_handler(
-            user,
-            atoi(argv[0]), /* keysym */
-            atoi(argv[1])  /* pressed */
-        );
+int __guac_handle_key(guac_user* user, Guacamole::GuacClientInstruction::Reader instr) {
+    if (user->key_handler) {
+        auto key = instr.getKey();
+        return user->key_handler(user, key.getKeysym(), key.getPressed());
+    }
     return 0;
 }
 
@@ -280,10 +273,11 @@ static guac_stream* __init_input_stream(guac_user* user, int stream_index) {
 
 }
 
-int __guac_handle_audio(guac_user* user, int argc, char** argv) {
+int __guac_handle_audio(guac_user* user, Guacamole::GuacClientInstruction::Reader instr) {
 
     /* Pull corresponding stream */
-    int stream_index = atoi(argv[0]);
+    auto audio = instr.getAudio();
+    int stream_index = audio.getStream();
     guac_stream* stream = __init_input_stream(user, stream_index);
     if (stream == NULL)
         return 0;
@@ -293,7 +287,7 @@ int __guac_handle_audio(guac_user* user, int argc, char** argv) {
         return user->audio_handler(
             user,
             stream,
-            argv[1] /* mimetype */
+            const_cast<char*>(audio.getMimetype().cStr())
         );
 
     /* Otherwise, abort */
@@ -303,10 +297,11 @@ int __guac_handle_audio(guac_user* user, int argc, char** argv) {
 
 }
 
-int __guac_handle_clipboard(guac_user* user, int argc, char** argv) {
+int __guac_handle_clipboard(guac_user* user, Guacamole::GuacClientInstruction::Reader instr) {
 
     /* Pull corresponding stream */
-    int stream_index = atoi(argv[0]);
+    auto clipboard = instr.getClipboard();
+    int stream_index = clipboard.getStream();
     guac_stream* stream = __init_input_stream(user, stream_index);
     if (stream == NULL)
         return 0;
@@ -316,7 +311,7 @@ int __guac_handle_clipboard(guac_user* user, int argc, char** argv) {
         return user->clipboard_handler(
             user,
             stream,
-            argv[1] /* mimetype */
+            const_cast<char*>(clipboard.getMimetype().cStr())
         );
 
     /* Otherwise, abort */
@@ -326,20 +321,19 @@ int __guac_handle_clipboard(guac_user* user, int argc, char** argv) {
 
 }
 
-int __guac_handle_size(guac_user* user, int argc, char** argv) {
-    if (user->size_handler)
-        return user->size_handler(
-            user,
-            atoi(argv[0]), /* width */
-            atoi(argv[1])  /* height */
-        );
+int __guac_handle_size(guac_user* user, Guacamole::GuacClientInstruction::Reader instr) {
+    if (user->size_handler) {
+				auto size = instr.getSize();
+				return user->size_handler(user, size.getWidth(), size.getHeight());
+    }
     return 0;
 }
 
-int __guac_handle_file(guac_user* user, int argc, char** argv) {
+int __guac_handle_file(guac_user* user, Guacamole::GuacClientInstruction::Reader instr) {
 
     /* Pull corresponding stream */
-    int stream_index = atoi(argv[0]);
+    auto file = instr.getFile();
+    int stream_index = file.getStream();
     guac_stream* stream = __init_input_stream(user, stream_index);
     if (stream == NULL)
         return 0;
@@ -349,8 +343,8 @@ int __guac_handle_file(guac_user* user, int argc, char** argv) {
         return user->file_handler(
             user,
             stream,
-            argv[1], /* mimetype */
-            argv[2]  /* filename */
+            const_cast<char*>(file.getMimetype().cStr()),
+            const_cast<char*>(file.getFilename().cStr())
         );
 
     /* Otherwise, abort */
@@ -359,10 +353,11 @@ int __guac_handle_file(guac_user* user, int argc, char** argv) {
     return 0;
 }
 
-int __guac_handle_pipe(guac_user* user, int argc, char** argv) {
+int __guac_handle_pipe(guac_user* user, Guacamole::GuacClientInstruction::Reader instr) {
 
     /* Pull corresponding stream */
-    int stream_index = atoi(argv[0]);
+    auto pipe = instr.getPipe();
+    int stream_index = pipe.getStream();
     guac_stream* stream = __init_input_stream(user, stream_index);
     if (stream == NULL)
         return 0;
@@ -372,8 +367,8 @@ int __guac_handle_pipe(guac_user* user, int argc, char** argv) {
         return user->pipe_handler(
             user,
             stream,
-            argv[1], /* mimetype */
-            argv[2]  /* name */
+            const_cast<char*>(pipe.getMimetype().cStr()),
+            const_cast<char*>(pipe.getName().cStr())
         );
 
     /* Otherwise, abort */
@@ -382,12 +377,13 @@ int __guac_handle_pipe(guac_user* user, int argc, char** argv) {
     return 0;
 }
 
-int __guac_handle_ack(guac_user* user, int argc, char** argv) {
+int __guac_handle_ack(guac_user* user, Guacamole::GuacClientInstruction::Reader instr) {
 
     guac_stream* stream;
+    auto ack = instr.getAck();
 
     /* Parse stream index */
-    int stream_index = atoi(argv[0]);
+    int stream_index = ack.getStream();
 
     /* Ignore indices of client-level streams */
     if (stream_index % 2 != 0)
@@ -408,38 +404,39 @@ int __guac_handle_ack(guac_user* user, int argc, char** argv) {
 
     /* Call stream handler if defined */
     if (stream->ack_handler)
-        return stream->ack_handler(user, stream, argv[1],
-                atoi(argv[2]));
+        return stream->ack_handler(user, stream, const_cast<char*>(ack.getMessage().cStr()),
+                static_cast<guac_protocol_status>(ack.getStatus()));
 
     /* Fall back to global handler if defined */
     if (user->ack_handler)
-        return user->ack_handler(user, stream, argv[1],
-                atoi(argv[2]));
+        return user->ack_handler(user, stream, const_cast<char*>(ack.getMessage().cStr()),
+                static_cast<guac_protocol_status>(ack.getStatus()));
 
     return 0;
 }
 
-int __guac_handle_blob(guac_user* user, int argc, char** argv) {
+int __guac_handle_blob(guac_user* user, Guacamole::GuacClientInstruction::Reader instr) {
 
-    int stream_index = atoi(argv[0]);
+    auto blob = instr.getBlob();
+    int stream_index = blob.getStream();
     guac_stream* stream = __get_open_input_stream(user, stream_index);
 
     /* Fail if no such stream */
     if (stream == NULL)
         return 0;
 
+    auto data = blob.getData();
+
     /* Call stream handler if defined */
     if (stream->blob_handler) {
-        int length = guac_protocol_decode_base64(argv[1]);
-        return stream->blob_handler(user, stream, argv[1],
-            length);
+        return stream->blob_handler(user, stream,
+            const_cast<capnp::byte*>(data.begin()), data.size());
     }
 
     /* Fall back to global handler if defined */
     if (user->blob_handler) {
-        int length = guac_protocol_decode_base64(argv[1]);
-        return user->blob_handler(user, stream, argv[1],
-            length);
+        return user->blob_handler(user, stream,
+            const_cast<capnp::byte*>(data.begin()), data.size());
     }
 
     guac_protocol_send_ack(user->socket, stream,
@@ -447,10 +444,10 @@ int __guac_handle_blob(guac_user* user, int argc, char** argv) {
     return 0;
 }
 
-int __guac_handle_end(guac_user* user, int argc, char** argv) {
+int __guac_handle_end(guac_user* user, Guacamole::GuacClientInstruction::Reader instr) {
 
     int result = 0;
-    int stream_index = atoi(argv[0]);
+    int stream_index = instr.getEnd();
     guac_stream* stream = __get_open_input_stream(user, stream_index);
 
     /* Fail if no such stream */
@@ -470,12 +467,13 @@ int __guac_handle_end(guac_user* user, int argc, char** argv) {
     return result;
 }
 
-int __guac_handle_get(guac_user* user, int argc, char** argv) {
+int __guac_handle_get(guac_user* user, Guacamole::GuacClientInstruction::Reader instr) {
 
     guac_object* object;
+    auto get = instr.getGet();
 
     /* Validate object index */
-    int object_index = atoi(argv[0]);
+    int object_index = get.getObject();
     if (object_index < 0 || object_index >= GUAC_USER_MAX_OBJECTS)
         return 0;
 
@@ -490,7 +488,7 @@ int __guac_handle_get(guac_user* user, int argc, char** argv) {
         return object->get_handler(
             user,
             object,
-            argv[1] /* name */
+            const_cast<char*>(get.getName().cStr())
         );
 
     /* Fall back to global handler if defined */
@@ -498,18 +496,19 @@ int __guac_handle_get(guac_user* user, int argc, char** argv) {
         return user->get_handler(
             user,
             object,
-            argv[1] /* name */
+            const_cast<char*>(get.getName().cStr())
         );
 
     return 0;
 }
 
-int __guac_handle_put(guac_user* user, int argc, char** argv) {
+int __guac_handle_put(guac_user* user, Guacamole::GuacClientInstruction::Reader instr) {
 
     guac_object* object;
+    auto put = instr.getPut();
 
     /* Validate object index */
-    int object_index = atoi(argv[0]);
+    int object_index = put.getObject();
     if (object_index < 0 || object_index >= GUAC_USER_MAX_OBJECTS)
         return 0;
 
@@ -520,7 +519,7 @@ int __guac_handle_put(guac_user* user, int argc, char** argv) {
         return 0;
 
     /* Pull corresponding stream */
-    int stream_index = atoi(argv[1]);
+    int stream_index = put.getStream();
     guac_stream* stream = __init_input_stream(user, stream_index);
     if (stream == NULL)
         return 0;
@@ -531,8 +530,8 @@ int __guac_handle_put(guac_user* user, int argc, char** argv) {
             user,
             object, 
             stream,
-            argv[2], /* mimetype */
-            argv[3]  /* name */
+            const_cast<char*>(put.getMimetype().cStr()),
+            const_cast<char*>(put.getName().cStr())
         );
 
     /* Fall back to global handler if defined */
@@ -541,8 +540,8 @@ int __guac_handle_put(guac_user* user, int argc, char** argv) {
             user,
             object,
             stream,
-            argv[2], /* mimetype */
-            argv[3]  /* name */
+            const_cast<char*>(put.getMimetype().cStr()),
+            const_cast<char*>(put.getName().cStr())
         );
 
     /* Otherwise, abort */
@@ -551,7 +550,7 @@ int __guac_handle_put(guac_user* user, int argc, char** argv) {
     return 0;
 }
 
-int __guac_handle_disconnect(guac_user* user, int argc, char** argv) {
+int __guac_handle_disconnect(guac_user* user, Guacamole::GuacClientInstruction::Reader instr) {
     guac_user_stop(user);
     return 0;
 }

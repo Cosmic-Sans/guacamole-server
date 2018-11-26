@@ -17,32 +17,30 @@
  * under the License.
  */
 
+extern "C" {
 #include "config.h"
 #include "display.h"
 #include "log.h"
 
 #include <guacamole/client.h>
+}
+#include "Guacamole.capnp.h"
 
 #include <stdlib.h>
 
-int guacenc_handle_copy(guacenc_display* display, int argc, char** argv) {
-
-    /* Verify argument count */
-    if (argc < 9) {
-        guacenc_log(GUAC_LOG_WARNING, "\"copy\" instruction incomplete");
-        return 1;
-    }
+int guacenc_handle_copy(guacenc_display* display, Guacamole::GuacServerInstruction::Reader instr) {
 
     /* Parse arguments */
-    int sindex = atoi(argv[0]);
-    int sx = atoi(argv[1]);
-    int sy = atoi(argv[2]);
-    int width = atoi(argv[3]);
-    int height = atoi(argv[4]);
-    int mask = atoi(argv[5]);
-    int dindex = atoi(argv[6]);
-    int dx = atoi(argv[7]);
-    int dy = atoi(argv[8]);
+    const auto copy = instr.getCopy();
+    int sindex = copy.getSrcLayer();
+    int sx = copy.getSrcX();
+    int sy = copy.getSrcY();
+    int width = copy.getSrcWidth();
+    int height = copy.getSrcHeight();
+    const auto mask = static_cast<guac_composite_mode>(copy.getMask());
+    int dindex = copy.getDstLayer();
+    int dx = copy.getDstX();
+    int dy = copy.getDstY();
 
     /* Pull buffer of source layer/buffer */
     guacenc_buffer* src = guacenc_display_get_related_buffer(display, sindex);

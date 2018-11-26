@@ -17,6 +17,7 @@
  * under the License.
  */
 
+extern "C" {
 #include "config.h"
 #include "cursor.h"
 #include "display.h"
@@ -24,32 +25,25 @@
 #include "parse.h"
 
 #include <guacamole/client.h>
+}
+#include "Guacamole.capnp.h"
 
 #include <stdlib.h>
 
-int guacenc_handle_mouse(guacenc_display* display, int argc, char** argv) {
-
-    /* Verify argument count */
-    if (argc < 2) {
-        guacenc_log(GUAC_LOG_WARNING, "\"mouse\" instruction incomplete");
-        return 1;
-    }
+int guacenc_handle_mouse(guacenc_display* display, Guacamole::GuacServerInstruction::Reader instr) {
 
     /* Parse arguments */
-    int x = atoi(argv[0]);
-    int y = atoi(argv[1]);
+    const auto mouse = instr.getMouse();
+    int x = mouse.getX();
+    int y = mouse.getY();
 
     /* Update cursor properties */
     guacenc_cursor* cursor = display->cursor;
     cursor->x = x;
     cursor->y = y;
 
-    /* If no timestamp provided, nothing further to do */
-    if (argc < 4)
-        return 0;
-
     /* Leverage timestamp to render frame */
-    guac_timestamp timestamp = guacenc_parse_timestamp(argv[3]);
+    guac_timestamp timestamp = mouse.getTimestamp();
     return guacenc_display_sync(display, timestamp);
 
 }

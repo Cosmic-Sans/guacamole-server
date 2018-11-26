@@ -17,41 +17,41 @@
  * under the License.
  */
 
+extern "C" {
 #include "config.h"
 #include "display.h"
 #include "log.h"
 
 #include <guacamole/client.h>
+}
+#include "Guacamole.capnp.h"
 
 #include <stdlib.h>
 
-int guacenc_handle_cfill(guacenc_display* display, int argc, char** argv) {
- 
-    /* Verify argument count */
-    if (argc < 6) {
-        guacenc_log(GUAC_LOG_WARNING, "\"cfill\" instruction incomplete");
-        return 1;
-    }
+int guacenc_handle_move(guacenc_display* display, Guacamole::GuacServerInstruction::Reader instr) {
 
     /* Parse arguments */
-    int mask = atoi(argv[0]);
-    int index = atoi(argv[1]);
-    double r = atoi(argv[2]) / 255.0;
-    double g = atoi(argv[3]) / 255.0;
-    double b = atoi(argv[4]) / 255.0;
-    double a = atoi(argv[5]) / 255.0;
+    const auto move = instr.getMove();
+    int layer_index = move.getLayer();
+    int parent_index = move.getParent();
+    int x = move.getX();
+    int y = move.getY();
+    int z = move.getZ();
 
-    /* Pull buffer of requested layer/buffer */
-    guacenc_buffer* buffer = guacenc_display_get_related_buffer(display, index);
-    if (buffer == NULL)
+    /* Retrieve requested layer */
+    guacenc_layer* layer = guacenc_display_get_layer(display, layer_index);
+    if (layer == NULL)
         return 1;
 
-    /* Fill with RGBA color */
-    if (buffer->cairo != NULL) {
-        cairo_set_operator(buffer->cairo, guacenc_display_cairo_operator(mask));
-        cairo_set_source_rgba(buffer->cairo, r, g, b, a);
-        cairo_fill(buffer->cairo);
-    }
+    /* Validate parent layer */
+    if (guacenc_display_get_layer(display, parent_index) == NULL)
+        return 1;
+
+    /* Update layer properties */
+    layer->parent_index = parent_index;
+    layer->x = x;
+    layer->y = y;
+    layer->z = z;
 
     return 0;
 

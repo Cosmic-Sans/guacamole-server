@@ -357,7 +357,6 @@ guac_socket* guac_socket_broadcast(guac_client* client) {
     socket->data = data;
 
     pthread_mutexattr_init(&lock_attributes);
-    pthread_mutexattr_setpshared(&lock_attributes, PTHREAD_PROCESS_SHARED);
 
     /* Init lock */
     pthread_mutex_init(&(data->socket_lock), &lock_attributes);

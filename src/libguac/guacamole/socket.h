@@ -36,6 +36,10 @@
 #include <stdint.h>
 #include <unistd.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 struct guac_socket {
 
     /**
@@ -361,6 +365,10 @@ ssize_t guac_socket_flush(guac_socket* socket);
  *         available, negative on error.
  */
 int guac_socket_select(guac_socket* socket, int usec_timeout);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif
 

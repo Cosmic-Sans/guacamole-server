@@ -17,34 +17,37 @@
  * under the License.
  */
 
+extern "C" {
 #include "config.h"
 #include "display.h"
+#include "image-stream.h"
 #include "log.h"
 
 #include <guacamole/client.h>
+}
+#include "Guacamole.capnp.h"
 
 #include <stdlib.h>
 
-int guacenc_handle_size(guacenc_display* display, int argc, char** argv) {
-
-    /* Verify argument count */
-    if (argc < 3) {
-        guacenc_log(GUAC_LOG_WARNING, "\"size\" instruction incomplete");
-        return 1;
-    }
+int guacenc_handle_end(guacenc_display* display, Guacamole::GuacServerInstruction::Reader instr) {
 
     /* Parse arguments */
-    int index = atoi(argv[0]);
-    int width = atoi(argv[1]);
-    int height = atoi(argv[2]);
+    int index = instr.getEnd();
 
-    /* Retrieve requested layer/buffer */
-    guacenc_buffer* buffer = guacenc_display_get_related_buffer(display, index);
+    /* Retrieve image stream */
+    guacenc_image_stream* stream =
+        guacenc_display_get_image_stream(display, index);
+    if (stream == NULL)
+        return 1;
+
+    /* Retrieve destination buffer */
+    guacenc_buffer* buffer =
+        guacenc_display_get_related_buffer(display, stream->index);
     if (buffer == NULL)
         return 1;
 
-    /* Resize layer/buffer */
-    return guacenc_buffer_resize(buffer, width, height);
+    /* End image stream, drawing final image to the buffer */
+    return guacenc_image_stream_end(stream, buffer);
 
 }
 

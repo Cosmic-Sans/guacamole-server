@@ -18,32 +18,23 @@
  */
 
 #include "config.h"
-#include "display.h"
-#include "log.h"
 
-#include <guacamole/client.h>
+#include <chrono>
+#include <thread>
 
-#include <stdlib.h>
+#include "timestamp.h"
 
-int guacenc_handle_img(guacenc_display* display, int argc, char** argv) {
+guac_timestamp guac_timestamp_current() {
 
-    /* Verify argument count */
-    if (argc < 6) {
-        guacenc_log(GUAC_LOG_WARNING, "\"img\" instruction incomplete");
-        return 1;
-    }
+		return std::chrono::duration_cast<std::chrono::milliseconds>(
+            std::chrono::steady_clock::now().time_since_epoch())
+            .count();
 
-    /* Parse arguments */
-    int stream_index = atoi(argv[0]);
-    int mask = atoi(argv[1]);
-    int layer_index = atoi(argv[2]);
-    char* mimetype = argv[3];
-    int x = atoi(argv[4]);
-    int y = atoi(argv[5]);
+}
 
-    /* Create requested stream */
-    return guacenc_display_create_image_stream(display, stream_index,
-            mask, layer_index, mimetype, x, y);
+void guac_timestamp_msleep(int duration) {
+
+	std::this_thread::sleep_for(std::chrono::milliseconds(duration));
 
 }
 

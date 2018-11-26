@@ -17,43 +17,31 @@
  * under the License.
  */
 
-#ifndef _GUAC_TIMESTAMP_H
-#define _GUAC_TIMESTAMP_H
-
-/**
- * Provides functions and structures for creating timestamps.
- *
- * @file timestamp.h
- */
-
-#include "timestamp-types.h"
-
-#ifdef __cplusplus
 extern "C" {
-#endif
+#include "config.h"
+#include "display.h"
+#include "log.h"
 
-/**
- * Returns an arbitrary timestamp. The difference between return values of any
- * two calls is equal to the amount of time in milliseconds between those 
- * calls. The return value from a single call will not have any useful
- * (or defined) meaning.
- *
- * @return
- *     An arbitrary millisecond timestamp.
- */
-guac_timestamp guac_timestamp_current();
-
-/**
- * Sleeps for the given number of milliseconds.
- *
- * @param duration
- *     The number of milliseconds to sleep.
- */
-void guac_timestamp_msleep(int duration);
-
-#ifdef __cplusplus
+#include <guacamole/client.h>
 }
-#endif
+#include "Guacamole.capnp.h"
 
-#endif
+#include <stdlib.h>
+
+int guacenc_handle_img(guacenc_display* display, Guacamole::GuacServerInstruction::Reader instr) {
+
+    /* Parse arguments */
+    const auto img = instr.getImg();
+    int stream_index = img.getStream();
+    int mask = img.getMode();
+    int layer_index = img.getLayer();
+    const char* mimetype = img.getMimetype().cStr();
+    int x = img.getX();
+    int y = img.getY();
+
+    /* Create requested stream */
+    return guacenc_display_create_image_stream(display, stream_index,
+            mask, layer_index, mimetype, x, y);
+
+}
 

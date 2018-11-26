@@ -49,12 +49,11 @@ typedef ssize_t guac_socket_read_handler(guac_socket* socket,
  * will be called when data needs to be written to the socket.
  *
  * @param socket The guac_socket being written to.
- * @param buf The arbitrary buffer containing data to be written.
- * @param count The maximum number of bytes to written to the buffer.
+ * @param data The arbitrary data to be written.
  * @return The number of bytes written, or -1 if an error occurs.
  */
 typedef ssize_t guac_socket_write_handler(guac_socket* socket,
-        const void* buf, size_t count);
+       void* data);
 
 /**
  * Generic handler for socket select operations, similar to the POSIX select()

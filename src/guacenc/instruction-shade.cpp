@@ -17,31 +17,33 @@
  * under the License.
  */
 
+extern "C" {
 #include "config.h"
 #include "display.h"
 #include "log.h"
 
 #include <guacamole/client.h>
+}
+#include "Guacamole.capnp.h"
 
 #include <stdlib.h>
 
-int guacenc_handle_dispose(guacenc_display* display, int argc, char** argv) {
-
-    /* Verify argument count */
-    if (argc < 1) {
-        guacenc_log(GUAC_LOG_WARNING, "\"dispose\" instruction incomplete");
-        return 1;
-    }
+int guacenc_handle_shade(guacenc_display* display, Guacamole::GuacServerInstruction::Reader instr) {
 
     /* Parse arguments */
-    int index = atoi(argv[0]);
+    const auto shade = instr.getShade();
+    int index = shade.getLayer();
+    int opacity = shade.getOpacity();
 
-    /* If non-negative, dispose of layer */
-    if (index >= 0)
-        return guacenc_display_free_layer(display, index);
+    /* Retrieve requested layer */
+    guacenc_layer* layer = guacenc_display_get_layer(display, index);
+    if (layer == NULL)
+        return 1;
 
-    /* Otherwise, we're referring to a buffer */
-    return guacenc_display_free_buffer(display, index);
+    /* Update layer properties */
+    layer->opacity = opacity;
+
+    return 0;
 
 }
 
