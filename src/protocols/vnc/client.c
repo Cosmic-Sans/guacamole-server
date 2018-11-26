@@ -39,7 +39,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-int guac_client_init(guac_client* client) {
+int guac_vnc_client_init(guac_client* client) {
 
     /* Set client args */
     client->args = GUAC_VNC_CLIENT_ARGS;

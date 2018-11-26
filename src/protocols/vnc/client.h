@@ -59,5 +59,7 @@
  */
 guac_client_free_handler guac_vnc_client_free_handler;
 
+int guac_vnc_client_init(guac_client* client);
+
 #endif
 
