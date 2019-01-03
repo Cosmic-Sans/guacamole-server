@@ -72,9 +72,20 @@ int guac_vnc_client_free_handler(guac_client* client) {
         pthread_join(vnc_client->client_thread, NULL);
 
         /* Free memory not free'd by libvncclient's rfbClientCleanup() */
-        if (rfb_client->frameBuffer != NULL) free(rfb_client->frameBuffer);
-        if (rfb_client->raw_buffer != NULL) free(rfb_client->raw_buffer);
-        if (rfb_client->rcSource != NULL) free(rfb_client->rcSource);
+        if (rfb_client->frameBuffer != NULL) {
+          free(rfb_client->frameBuffer);
+          rfb_client->frameBuffer = NULL;
+        }
+
+        if (rfb_client->raw_buffer != NULL) {
+          free(rfb_client->raw_buffer);
+          rfb_client->raw_buffer = NULL;
+        }
+
+        if (rfb_client->rcSource != NULL) {
+          free(rfb_client->rcSource);
+          rfb_client->rcSource = NULL;
+        }
 
         /* Free VNC rfbClientData linked list (not free'd by rfbClientCleanup()) */
         while (rfb_client->clientData != NULL) {
