@@ -101,6 +101,6 @@
  */
 guac_client_free_handler guac_rdp_client_free_handler;
 
-int guac_rdp_client_init(guac_client* client, int argc, char** argv);
+int guac_rdp_client_init(guac_client* client);
 
 #endif

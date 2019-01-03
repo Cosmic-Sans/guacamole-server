@@ -47,7 +47,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-int guac_rdp_client_init(guac_client* client, int argc, char** argv) {
+int guac_rdp_client_init(guac_client* client) {
 
     /* Set client args */
     client->args = GUAC_RDP_CLIENT_ARGS;
