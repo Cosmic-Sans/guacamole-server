@@ -69,6 +69,7 @@ int guac_rdp_client_init(guac_client* client) {
 
     /* Set handlers */
     client->join_handler = guac_rdp_user_join_handler;
+    client->leave_handler = guac_rdp_user_leave_handler;
     client->free_handler = guac_rdp_client_free_handler;
 
 #ifdef ENABLE_COMMON_SSH
