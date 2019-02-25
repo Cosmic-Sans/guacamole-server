@@ -86,17 +86,21 @@ cairo_operator_t guacenc_display_cairo_operator(guac_composite_mode mask) {
 guacenc_display* guacenc_display_alloc(const char* path, const char* codec,
         int width, int height, int bitrate) {
 
+#ifdef LIBAVCODEC_VERSION_INT
     /* Prepare video encoding */
     guacenc_video* video = guacenc_video_alloc(path, codec, width, height, bitrate);
     if (video == NULL)
         return NULL;
+#endif
 
     /* Allocate display */
     guacenc_display* display =
         (guacenc_display*) calloc(1, sizeof(guacenc_display));
 
+#ifdef LIBAVCODEC_VERSION_INT
     /* Associate display with video output */
     display->output = video;
+#endif
 
     /* Allocate special-purpose cursor layer */
     display->cursor = guacenc_cursor_alloc();
@@ -113,8 +117,12 @@ int guacenc_display_free(guacenc_display* display) {
     if (display == NULL)
         return 0;
 
+#ifdef LIBAVCODEC_VERSION_INT
     /* Finalize video */
     int retval = guacenc_video_free(display->output);
+#else
+    int retval = 0;
+#endif
 
     /* Free all buffers */
     for (i = 0; i < GUACENC_DISPLAY_MAX_BUFFERS; i++)

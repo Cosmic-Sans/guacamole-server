@@ -17,6 +17,7 @@
  * under the License.
  */
 
+#ifdef LIBAVCODEC_VERSION_INT
 #ifndef GUACENC_VIDEO_H
 #define GUACENC_VIDEO_H
 
@@ -174,5 +175,6 @@ void guacenc_video_prepare_frame(guacenc_video* video, guacenc_buffer* buffer);
  */
 int guacenc_video_free(guacenc_video* video);
 
+#endif
 #endif
 

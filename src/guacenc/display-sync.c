@@ -48,12 +48,15 @@ int guacenc_display_sync(guacenc_display* display, guac_timestamp timestamp) {
     guacenc_layer* def_layer = guacenc_display_get_layer(display, 0);
     assert(def_layer != NULL);
 
+#ifdef LIBAVCODEC_VERSION_INT
     /* Update video timeline */
     if (guacenc_video_advance_timeline(display->output, timestamp))
         return 1;
 
     /* Prepare frame for write upon next flush */
     guacenc_video_prepare_frame(display->output, def_layer->frame);
+#endif
+
     return 0;
 
 }

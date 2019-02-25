@@ -89,10 +89,12 @@ typedef struct guacenc_display {
      */
     guac_timestamp last_sync;
 
+#ifdef LIBAVCODEC_VERSION_INT
     /**
      * The video that this display is recording to.
      */
     guacenc_video* output;
+#endif
 
 } guacenc_display;
 
