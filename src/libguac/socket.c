@@ -125,10 +125,6 @@ guac_socket* guac_socket_alloc() {
 
 void guac_socket_require_keep_alive(guac_socket* socket) {
 
-    /* Start keep-alive thread */
-    socket->__keep_alive_enabled = 1;
-    pthread_create(&(socket->__keep_alive_thread), NULL,
-                __guac_socket_keep_alive_thread, (void*) socket);
 
 }
 
