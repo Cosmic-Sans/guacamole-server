@@ -82,6 +82,10 @@ int guac_vnc_user_join_handler(guac_user* user, int argc, char** argv) {
             guac_pa_stream_add_user(vnc_client->audio, user);
 #endif
 
+        /* Synchronize QEMU audio stream */
+        if (vnc_client->qemu_audio)
+            guac_audio_stream_add_user(vnc_client->qemu_audio, user);
+
         /* Synchronize with current display */
         guac_common_display_dup(vnc_client->display, user, user->socket);
         guac_socket_flush(user->socket);

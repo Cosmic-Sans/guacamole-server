@@ -54,6 +54,164 @@
 
 char* GUAC_VNC_CLIENT_KEY = "GUAC_VNC";
 
+#define VNC_ENCODING_AUDIO                0XFFFFFEFD /* -259 */
+
+#define VNC_MSG_CLIENT_QEMU                       255
+/* QEMU client -> server message IDs */
+#define VNC_MSG_CLIENT_QEMU_AUDIO                 1
+
+/* QEMU client -> server audio message IDs */
+#define VNC_MSG_CLIENT_QEMU_AUDIO_ENABLE          0
+#define VNC_MSG_CLIENT_QEMU_AUDIO_DISABLE         1
+#define VNC_MSG_CLIENT_QEMU_AUDIO_SET_FORMAT      2
+
+/* QEMU server -> client audio message IDs */
+#define VNC_MSG_SERVER_QEMU_AUDIO_END             0
+#define VNC_MSG_SERVER_QEMU_AUDIO_BEGIN           1
+#define VNC_MSG_SERVER_QEMU_AUDIO_DATA            2
+
+#define AUDIO_FORMAT_U8 0
+#define AUDIO_FORMAT_S8 1
+#define AUDIO_FORMAT_U16 2
+#define AUDIO_FORMAT_S16 3
+#define AUDIO_FORMAT_U32 4
+#define AUDIO_FORMAT_S32 5
+
+/**
+ * Rate of audio to stream, in Hz.
+ */
+#define GUAC_QEMU_AUDIO_RATE 44100
+
+/**
+ * The number of channels to stream.
+ */
+#define GUAC_QEMU_AUDIO_CHANNELS 2
+
+/**
+ * The number of bits per sample.
+ */
+#define GUAC_QEMU_AUDIO_BPS 16
+
+static rfbBool guac_vnc_qemu_audio_encoding(rfbClient* client,
+  rfbFramebufferUpdateRectHeader* rect) {
+
+    guac_client* gc = rfbClientGetClientData(client, GUAC_VNC_CLIENT_KEY);
+    guac_vnc_client* vnc_client = (guac_vnc_client*) gc->data;
+    vnc_client->qemu_audio = guac_audio_stream_alloc(gc, NULL,
+            GUAC_QEMU_AUDIO_RATE,
+            GUAC_QEMU_AUDIO_CHANNELS,
+            GUAC_QEMU_AUDIO_BPS);
+
+    /* Warn if no audio encoding is available */
+    if (vnc_client->qemu_audio == NULL) {
+        guac_client_log(gc, GUAC_LOG_INFO,
+                "No available audio encoding. Sound disabled.");
+        return FALSE;
+    }
+
+    struct {
+        uint8_t type;
+        uint8_t msg_id;
+        uint16_t audio_id;
+        struct
+        {
+            uint8_t format;
+            uint8_t channels;
+            char frequency[sizeof(uint32_t)];
+        } set_format;
+    } audio_format_msg
+        = {
+            VNC_MSG_CLIENT_QEMU,
+            VNC_MSG_CLIENT_QEMU_AUDIO,
+            rfbClientSwap16IfLE(VNC_MSG_CLIENT_QEMU_AUDIO_SET_FORMAT),
+            AUDIO_FORMAT_S16,
+            GUAC_QEMU_AUDIO_CHANNELS
+          };
+    *(uint32_t*) audio_format_msg.set_format.frequency = rfbClientSwap32IfLE(GUAC_QEMU_AUDIO_RATE);
+
+    if (!WriteToRFBServer(client, (char*)& audio_format_msg, sizeof(audio_format_msg)))
+        return FALSE;
+
+    struct {
+        uint8_t type;
+        uint8_t msg_id;
+        uint16_t audio_id;
+    } audio_enable_msg
+        = {
+            VNC_MSG_CLIENT_QEMU,
+            VNC_MSG_CLIENT_QEMU_AUDIO,
+            rfbClientSwap16IfLE(VNC_MSG_CLIENT_QEMU_AUDIO_ENABLE)
+          };
+
+    if (!WriteToRFBServer(client, (char*)& audio_enable_msg, sizeof(audio_enable_msg)))
+        return FALSE;
+
+    guac_audio_stream_reset(vnc_client->qemu_audio, NULL,
+            GUAC_QEMU_AUDIO_RATE,
+            GUAC_QEMU_AUDIO_CHANNELS,
+            GUAC_QEMU_AUDIO_BPS);
+    guac_client_log(gc, GUAC_LOG_INFO, "QEMU audio enabled");
+
+    return TRUE;
+}
+
+static rfbBool guac_vnc_qemu_audio_msg(rfbClient* client,
+	rfbServerToClientMsg* message)
+{
+    if (message->type != VNC_MSG_CLIENT_QEMU)
+        return FALSE;
+
+    struct {
+        uint8_t msg_id;
+        char audio_id[sizeof(uint16_t)];
+    } msg;
+    if (!ReadFromRFBServer(client, (char*)&msg, sizeof(msg)))
+        return TRUE;
+    if (msg.msg_id != VNC_MSG_CLIENT_QEMU_AUDIO)
+        return TRUE;
+    switch (rfbClientSwap16IfLE(*(uint16_t*)msg.audio_id))
+    {
+    case VNC_MSG_SERVER_QEMU_AUDIO_BEGIN:
+        /* Do nothing */
+        break;
+    case VNC_MSG_SERVER_QEMU_AUDIO_DATA:
+    {
+        uint32_t size;
+        if (!ReadFromRFBServer(client, (char*) &size, sizeof(uint32_t)))
+            return TRUE;
+        size = rfbClientSwap32IfLE(size);
+        char* data = malloc(size);
+        if (ReadFromRFBServer(client, data, size)) {
+            guac_client* gc = rfbClientGetClientData(client, GUAC_VNC_CLIENT_KEY);
+            guac_vnc_client* vnc_client = (guac_vnc_client*) gc->data;
+
+            /* Get audio stream from client data */
+            guac_audio_stream* audio = vnc_client->qemu_audio;
+
+            guac_audio_stream_write_pcm(audio, data, size);
+            guac_audio_stream_flush(audio);
+        }
+        free(data);
+        break;
+    }
+    case VNC_MSG_SERVER_QEMU_AUDIO_END:
+        /* Do nothing */
+        break;
+    }
+
+	return TRUE;
+}
+
+static int QEMU_AUDIO_ENCODING[] = { VNC_ENCODING_AUDIO, 0 };
+static rfbClientProtocolExtension qemu_audio_extension = {
+    QEMU_AUDIO_ENCODING,
+    guac_vnc_qemu_audio_encoding,
+    guac_vnc_qemu_audio_msg,
+    NULL,
+    NULL,
+    NULL
+};
+
 rfbClient* guac_vnc_get_client(guac_client* client) {
 
     rfbClient* rfb_client = rfbGetClient(8, 3, 4); /* 32-bpp client */
@@ -126,6 +284,9 @@ rfbClient* guac_vnc_get_client(guac_client* client) {
     /* Set encodings if provided */
     if (vnc_settings->encodings)
         rfb_client->appData.encodingsString = strdup(vnc_settings->encodings);
+
+    if (vnc_settings->qemu_audio_enabled)
+        rfbClientRegisterExtension(&qemu_audio_extension);
 
     /* Connect */
     if (rfbInitClient(rfb_client, NULL, NULL))

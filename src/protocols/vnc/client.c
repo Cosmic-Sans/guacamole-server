@@ -132,6 +132,10 @@ int guac_vnc_client_free_handler(guac_client* client) {
         guac_pa_stream_free(vnc_client->audio);
 #endif
 
+    /* Clean up audio stream, if allocated */
+    if (vnc_client->qemu_audio != NULL)
+        guac_audio_stream_free(vnc_client->qemu_audio);
+
     /* Free parsed settings */
     if (settings != NULL)
         guac_vnc_settings_free(settings);
