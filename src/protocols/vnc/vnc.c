@@ -97,6 +97,10 @@ static rfbBool guac_vnc_qemu_audio_encoding(rfbClient* client,
 
     guac_client* gc = rfbClientGetClientData(client, GUAC_VNC_CLIENT_KEY);
     guac_vnc_client* vnc_client = (guac_vnc_client*) gc->data;
+
+    if (!vnc_client->settings->qemu_audio_enabled)
+        return FALSE;
+
     vnc_client->qemu_audio = guac_audio_stream_alloc(gc, NULL,
             GUAC_QEMU_AUDIO_RATE,
             GUAC_QEMU_AUDIO_CHANNELS,
@@ -285,8 +289,11 @@ rfbClient* guac_vnc_get_client(guac_client* client) {
     if (vnc_settings->encodings)
         rfb_client->appData.encodingsString = strdup(vnc_settings->encodings);
 
-    if (vnc_settings->qemu_audio_enabled)
+    static rfbBool registered_qemu_audio_extension = FALSE;
+    if (!registered_qemu_audio_extension && vnc_settings->qemu_audio_enabled) {
         rfbClientRegisterExtension(&qemu_audio_extension);
+        registered_qemu_audio_extension = TRUE;
+    }
 
     /* Connect */
     if (rfbInitClient(rfb_client, NULL, NULL))
