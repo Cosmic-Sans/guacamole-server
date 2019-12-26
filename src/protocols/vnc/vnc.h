@@ -29,6 +29,7 @@
 #include "common/surface.h"
 #include "settings.h"
 
+#include <guacamole/audio.h>
 #include <guacamole/client.h>
 #include <guacamole/layer.h>
 #include <rfb/rfbclient.h>
@@ -93,6 +94,11 @@ typedef struct guac_vnc_client {
      */
     guac_pa_stream* audio;
 #endif
+
+    /**
+     * Audio output, if any.
+     */
+    guac_audio_stream* qemu_audio;
 
 #ifdef ENABLE_COMMON_SSH
     /**

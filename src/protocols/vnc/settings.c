@@ -52,6 +52,8 @@ const char* GUAC_VNC_CLIENT_ARGS[] = {
     "audio-servername",
 #endif
 
+    "enable-qemu-audio",
+
 #ifdef ENABLE_VNC_LISTEN
     "reverse-connect",
     "listen-timeout",
@@ -168,6 +170,11 @@ enum VNC_ARGS_IDX {
      */
     IDX_AUDIO_SERVERNAME,
 #endif
+
+    /**
+     * "true" if QEMU audio should be enabled, "false" or blank otherwise.
+     */
+    IDX_ENABLE_QEMU_AUDIO,
 
 #ifdef ENABLE_VNC_LISTEN
     /**
@@ -400,6 +407,11 @@ guac_vnc_settings* guac_vnc_parse_args(guac_user* user,
             guac_user_parse_args_string(user, GUAC_VNC_CLIENT_ARGS, argv,
                     IDX_AUDIO_SERVERNAME, NULL);
 #endif
+
+    /* QEMU audio enable/disable */
+    settings->qemu_audio_enabled =
+        guac_user_parse_args_boolean(user, GUAC_VNC_CLIENT_ARGS, argv,
+                IDX_ENABLE_QEMU_AUDIO, true);
 
     /* Set clipboard encoding if specified */
     settings->clipboard_encoding =

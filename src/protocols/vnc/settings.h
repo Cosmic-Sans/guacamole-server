@@ -117,6 +117,11 @@ typedef struct guac_vnc_settings {
 #endif
 
     /**
+     * Whether QEMU audio is enabled.
+     */
+    bool qemu_audio_enabled;
+
+    /**
      * The number of connection attempts to make before giving up.
      */
     int retries;
