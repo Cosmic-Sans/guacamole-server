@@ -761,9 +761,6 @@ static int guac_rdp_handle_connection(guac_client* client) {
     /* Free RDP keyboard state */
     guac_rdp_keyboard_free(rdp_client->keyboard);
 
-    /* Free display */
-    guac_common_display_free(rdp_client->display);
-
     pthread_mutex_unlock(&(rdp_client->rdp_lock));
 
     /* Client is now disconnected */

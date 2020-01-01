@@ -111,6 +111,10 @@ int guac_rdp_client_free_handler(guac_client* client) {
     if (rdp_client->recording != NULL)
         guac_common_recording_free(rdp_client->recording);
 
+    /* Free display */
+    if (rdp_client->display != NULL)
+        guac_common_display_free(rdp_client->display);
+
     /* Clean up audio stream, if allocated */
     if (rdp_client->audio != NULL)
         guac_audio_stream_free(rdp_client->audio);
