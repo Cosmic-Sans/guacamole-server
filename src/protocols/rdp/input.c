@@ -18,11 +18,11 @@
  */
 
 #include "config.h"
-
+#include "channels/disp.h"
 #include "client.h"
 #include "common/recording.h"
 #include "input.h"
-#include "keyboard.h"
+#include "keyboard/keyboard.h"
 #include "rdp.h"
 
 #include <freerdp/freerdp.h>
@@ -37,14 +37,10 @@ int guac_rdp_user_mouse_handler(guac_user* user, int x, int y, int mask) {
     guac_client* client = user->client;
     guac_rdp_client* rdp_client = (guac_rdp_client*) client->data;
 
-    pthread_mutex_lock(&(rdp_client->rdp_lock));
-
     /* Skip if not yet connected */
     freerdp* rdp_inst = rdp_client->rdp_inst;
-    if (rdp_inst == NULL) {
-        pthread_mutex_unlock(&(rdp_client->rdp_lock));
+    if (rdp_inst == NULL)
         return 0;
-    }
 
     /* Store current mouse location/state */
     guac_common_cursor_update(rdp_client->display->cursor, user, x, y, mask);
@@ -117,8 +113,6 @@ int guac_rdp_user_mouse_handler(guac_user* user, int x, int y, int mask) {
         rdp_client->mouse_button_mask = mask;
     }
 
-    pthread_mutex_unlock(&(rdp_client->rdp_lock));
-
     return 0;
 }
 
@@ -152,10 +146,6 @@ int guac_rdp_user_size_handler(guac_user* user, int width, int height) {
     /* Convert client pixels to remote pixels */
     width  = width  * settings->resolution / user->info.optimal_resolution;
     height = height * settings->resolution / user->info.optimal_resolution;
-
-    /* Send display update */
-    pthread_mutex_lock(&(rdp_client->rdp_lock));
-    pthread_mutex_unlock(&(rdp_client->rdp_lock));
 
     return 0;
 

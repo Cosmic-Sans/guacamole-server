@@ -34,8 +34,7 @@
  * milliseconds. If the server is silent for at least this amount of time, the
  * frame will be considered finished.
  */
-//#define GUAC_RDP_FRAME_TIMEOUT INFINITE
-#define GUAC_RDP_FRAME_TIMEOUT 250
+#define GUAC_RDP_FRAME_TIMEOUT 0
 
 /**
  * The amount of time to wait for a new message from the RDP server when
@@ -100,7 +99,5 @@
  * Handler which frees all data associated with the guac_client.
  */
 guac_client_free_handler guac_rdp_client_free_handler;
-
-int guac_rdp_client_init(guac_client* client);
 
 #endif

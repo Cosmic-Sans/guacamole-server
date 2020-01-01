@@ -1,7 +1,6 @@
 #include "config.h"
-#include "rdp_keymap.h"
+#include "keyboard/keymap.h"
 #include <freerdp/input.h>
-
 #include <freerdp/locale/keyboard.h>
 
 #include <stddef.h>
@@ -24,6 +23,7 @@ static guac_rdp_keysym_desc __guac_rdp_keymap_base[] = {
     { .keysym = 65364, .scancode = 80, .flags = KBD_FLAGS_EXTENDED },
     { .keysym = 65365, .scancode = 73, .flags = KBD_FLAGS_EXTENDED },
     { .keysym = 65366, .scancode = 81, .flags = KBD_FLAGS_EXTENDED },
+    { .keysym = 65377, .scancode = 55, .flags = KBD_FLAGS_EXTENDED },
     { .keysym = 65407, .scancode = 69 },
     { .keysym = 65300, .scancode = 70 },
     { .keysym = 65509, .scancode = 58, .flags = KBD_FLAGS_EXTENDED },
@@ -57,7 +57,7 @@ static guac_rdp_keysym_desc __guac_rdp_keymap_base[] = {
     { .keysym = 65505, .scancode = 42 },
     { .keysym = 65506, .scancode = 54 },
     { .keysym = 65507, .scancode = 29 },
-    { .keysym = 65508, .scancode = 157 },
+    { .keysym = 65508, .scancode = 29, .flags = KBD_FLAGS_EXTENDED },
     { .keysym = 65513, .scancode = 56 },
     { .keysym = 65514, .scancode = 56, .flags = KBD_FLAGS_EXTENDED },
     { .keysym = 65515, .scancode = 91, .flags = KBD_FLAGS_EXTENDED },

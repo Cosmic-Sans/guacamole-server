@@ -18,13 +18,12 @@
  */
 
 #include "config.h"
-
 #include "common/display.h"
 #include "input.h"
-#include "user.h"
 #include "rdp.h"
-#include "rdp_settings.h"
-#include "rdp_stream.h"
+#include "settings.h"
+#include "upload.h"
+#include "user.h"
 
 #ifdef ENABLE_COMMON_SSH
 #include "sftp.h"
@@ -91,13 +90,9 @@ int guac_rdp_user_join_handler(guac_user* user, int argc, char** argv) {
         /* General mouse/keyboard/clipboard events */
         user->mouse_handler     = guac_rdp_user_mouse_handler;
         user->key_handler       = guac_rdp_user_key_handler;
-        user->clipboard_handler = guac_rdp_clipboard_handler;
 
         /* Display size change events */
         user->size_handler = guac_rdp_user_size_handler;
-
-        /* Set generic (non-filesystem) file upload handler */
-        user->file_handler = guac_rdp_user_file_handler;
 
     }
 
@@ -133,10 +128,8 @@ int guac_rdp_user_leave_handler(guac_user* user) {
 
     guac_rdp_client* rdp_client = (guac_rdp_client*) user->client->data;
 
-    if (rdp_client->display) {
-        /* Update shared cursor state */
-        guac_common_cursor_remove_user(rdp_client->display->cursor, user);
-    }
+    /* Update shared cursor state */
+    guac_common_cursor_remove_user(rdp_client->display->cursor, user);
 
     /* Free settings if not owner (owner settings will be freed with client) */
     if (!user->owner) {

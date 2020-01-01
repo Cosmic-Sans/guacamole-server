@@ -18,10 +18,13 @@
  */
 
 #include "config.h"
-
+#include "channels/audio-input.h"
+#include "channels/disp.h"
 #include "client.h"
+#include "common/recording.h"
+#include "fs.h"
+#include "log.h"
 #include "rdp.h"
-#include "rdp_fs.h"
 #include "user.h"
 
 #ifdef ENABLE_COMMON_SSH
@@ -32,16 +35,13 @@
 
 #include <freerdp/cache/cache.h>
 #include <freerdp/channels/channels.h>
+#include <freerdp/client/channels.h>
+#include <freerdp/client/cliprdr.h>
 #include <freerdp/freerdp.h>
 #include <guacamole/audio.h>
 #include <guacamole/client.h>
 #include <guacamole/socket.h>
-
-#include <freerdp/client/cliprdr.h>
-
-#ifdef HAVE_FREERDP_CLIENT_CHANNELS_H
-#include <freerdp/client/channels.h>
-#endif
+#include <winpr/wlog.h>
 
 #include <pthread.h>
 #include <stdlib.h>
@@ -56,20 +56,16 @@ int guac_rdp_client_init(guac_client* client) {
     guac_rdp_client* rdp_client = calloc(1, sizeof(guac_rdp_client));
     client->data = rdp_client;
 
-    /* Init clipboard */
-    rdp_client->clipboard = guac_common_clipboard_alloc(GUAC_RDP_CLIPBOARD_MAX_LENGTH);
+    /* Redirect FreeRDP log messages to guac_client_log() */
+    guac_rdp_redirect_wlog(client);
 
     /* Recursive attribute for locks */
     pthread_mutexattr_init(&(rdp_client->attributes));
     pthread_mutexattr_settype(&(rdp_client->attributes),
             PTHREAD_MUTEX_RECURSIVE);
 
-    /* Init RDP lock */
-    pthread_mutex_init(&(rdp_client->rdp_lock), &(rdp_client->attributes));
-
     /* Set handlers */
     client->join_handler = guac_rdp_user_join_handler;
-    client->leave_handler = guac_rdp_user_leave_handler;
     client->free_handler = guac_rdp_client_free_handler;
 
 #ifdef ENABLE_COMMON_SSH
@@ -116,7 +112,6 @@ int guac_rdp_client_free_handler(guac_client* client) {
         guac_audio_stream_free(rdp_client->audio);
 
     /* Free client data */
-    guac_common_clipboard_free(rdp_client->clipboard);
     free(rdp_client);
 
     return 0;

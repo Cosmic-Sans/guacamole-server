@@ -21,15 +21,18 @@
 #define GUAC_RDP_H
 
 #include "config.h"
-
+#include "channels/audio-input.h"
+#include "channels/cliprdr.h"
+#include "channels/disp.h"
 #include "common/clipboard.h"
 #include "common/display.h"
 #include "common/list.h"
 #include "common/recording.h"
 #include "common/surface.h"
-#include "guac_rdpsnd/rdpsnd_service.h"
-#include "keyboard.h"
-#include "rdp_settings.h"
+#include "fs.h"
+#include "keyboard/keyboard.h"
+#include "print-job.h"
+#include "settings.h"
 
 #include <freerdp/freerdp.h>
 #include <freerdp/codec/color.h>
@@ -44,7 +47,6 @@
 
 #include <pthread.h>
 #include <stdint.h>
-#include <freerdp/client/cliprdr.h>
 
 /**
  * RDP-specific client data.
@@ -93,24 +95,29 @@ typedef struct guac_rdp_client {
     guac_rdp_keyboard* keyboard;
 
     /**
-     * The current clipboard contents.
+     * The current state of the clipboard and the CLIPRDR channel.
      */
-    guac_common_clipboard* clipboard;
-
-    /**
-     * The format of the clipboard which was requested. Data received from
-     * the RDP server should conform to this format. This will be one of
-     * several legal clipboard format values defined within FreeRDP, such as
-     * CB_FORMAT_TEXT.
-     */
-    int requested_clipboard_format;
-
-		CliprdrClientContext* cliprdr;
+    guac_rdp_clipboard* clipboard;
 
     /**
      * Audio output, if any.
      */
     guac_audio_stream* audio;
+
+    /**
+     * Audio input buffer, if audio input is enabled.
+     */
+    guac_rdp_audio_buffer* audio_input;
+
+    /**
+     * The filesystem being shared, if any.
+     */
+    guac_rdp_fs* filesystem;
+
+    /**
+     * The currently-active print job, or NULL if no print job is active.
+     */
+    guac_rdp_print_job* active_job;
 
 #ifdef ENABLE_COMMON_SSH
     /**
@@ -136,16 +143,14 @@ typedef struct guac_rdp_client {
     guac_common_recording* recording;
 
     /**
+     * Display size update module.
+     */
+    guac_rdp_disp* disp;
+
+    /**
      * List of all available static virtual channels.
      */
     guac_common_list* available_svc;
-
-    /**
-     * Lock which is locked and unlocked for each RDP message, and for each
-     * part of the RDP client instance which may be dynamically freed and
-     * reallocated during reconnection.
-     */
-    pthread_mutex_t rdp_lock;
 
     /**
      * Common attributes for locks.
@@ -172,16 +177,9 @@ typedef struct rdp_freerdp_context {
     guac_client* client;
 
     /**
-     * Color conversion structure to be used to convert RDP images to PNGs.
-     */
-    gdiPalette* clrconv;
-
-    /**
      * The current color palette, as received from the RDP server.
      */
     UINT32 palette[256];
-
-    guac_rdpsndArgs rdpsnd_args;
 
 } rdp_freerdp_context;
 
@@ -197,10 +195,9 @@ typedef struct rdp_freerdp_context {
  *     NULL in all cases. The return value of this thread is expected to be
  *     ignored.
  */
-#ifdef __cplusplus
-	extern "C"
-#endif
-	void* guac_rdp_client_thread(void* data);
+void* guac_rdp_client_thread(void* data);
+
+int guac_rdp_client_init(guac_client* client);
 
 #endif
 
